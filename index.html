@@ -6,7 +6,7 @@
     <title>Feedback Chat V2 - 雙向翻譯 & 在線協作</title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIumYpuaZguevsumit+i聊天室 V2IiwKICAic2hvcnRfbmFtZSI6ICLni6zoipLoob3oiYUiLAogICJzdGFydF91cmwiOiAiLi9pbmRleF92Mi5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjBmOWZmIiwKICAidGhlbWVfY29sb3IiOiAiIzNiODJmNiIKfQ==">
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIumYpuaZguevsumit+i聊天室 V2IiwKICAic2hvcnRfbmFtZSI6ICLni6zoipLoob3oiYUiLAogICJzdGFydF91cmwiOiAiLi9pbmRleC5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjBmOWZmIiwKICAidGhlbWVfY29sb3IiOiAiIzNiODJmNiIKfQ==">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -16,6 +16,7 @@
             font-family: 'Outfit', 'Microsoft JhengHei', 'Meiryo', sans-serif;
             background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
             height: 100vh; overflow: hidden; margin: 0; padding: 0;
+            transition: all 0.3s ease;
         }
         .glass-panel {
             background: var(--bg-glass);
@@ -29,42 +30,49 @@
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         
         #name-modal { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); z-index: 2000; }
-        .flash-active { animation: ring-pulse 1s infinite alternate; }
-        @keyframes ring-pulse { from { box-shadow: inset 0 0 0px transparent; } to { box-shadow: inset 0 0 60px rgba(239, 68, 68, 0.4); } }
+        .flash-active { animation: ring-pulse 1s infinite alternate !important; }
+        @keyframes ring-pulse { 
+            from { box-shadow: inset 0 0 0px transparent; } 
+            to { box-shadow: inset 0 0 80px rgba(239, 68, 68, 0.6); } 
+        }
         
         #super-alert {
-            position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+            position: fixed; top: -120px; left: 50%; transform: translateX(-50%);
             background: #ef4444; color: white; padding: 18px 40px; border-radius: 9999px;
-            font-weight: 800; font-size: 1.1rem; box-shadow: 0 20px 40px rgba(239, 68, 68, 0.3);
-            z-index: 3000; transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            font-weight: 800; font-size: 1.15rem; box-shadow: 0 30px 60px rgba(239, 68, 68, 0.4);
+            z-index: 3000; transition: all 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
             display: flex; align-items: center; gap: 15px; cursor: pointer; border: 2px solid white;
         }
-        #super-alert.active { top: 30px; }
+        #super-alert.active { top: 40px; }
 
         .date-divider {
             display: flex; align-items: center; text-align: center; color: #94a3b8; font-size: 11px; font-weight: 700; margin: 2rem 0;
         }
         .date-divider::before, .date-divider::after { content: ''; flex: 1; border-bottom: 1px solid #e2e8f0; }
         .date-divider span { padding: 0 1.5rem; letter-spacing: 0.1em; }
-
         .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-right: 6px; }
     </style>
+    <!-- Dynamic Favicon Container -->
+    <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
 </head>
 <body class="flex items-center justify-center p-2 lg:p-4">
 
     <!-- Alert Banner -->
     <div id="super-alert" onclick="dismissAlert()">
-        <span class="text-2xl animate-bounce">📢</span>
-        <div>有新對話！ (新着) <span id="alert-sender" class="ml-2 opacity-80 text-sm"></span></div>
+        <span class="text-3xl animate-bounce">📢</span>
+        <div class="text-left">
+            <div class="leading-tight">有新對話！ (新着)</div>
+            <div id="alert-sender" class="text-[10px] font-black opacity-90 uppercase tracking-widest">Incoming from: ...</div>
+        </div>
     </div>
 
     <!-- Name Modal -->
     <div id="name-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl space-y-8">
+        <div class="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl space-y-8 border border-slate-100">
             <div class="text-center space-y-2">
-                <div class="text-6xl mb-4">🖐️</div>
-                <h2 class="text-2xl font-black text-slate-800 tracking-tight">請輸入您的姓名</h2>
-                <h3 class="text-sm font-bold text-blue-500 italic uppercase tracking-widest leading-tight">名前を入力してください</h3>
+                <div class="text-6xl mb-4">👤</div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">歡迎進入聊天室</h2>
+                <h3 class="text-sm font-bold text-blue-500 italic uppercase tracking-widest leading-tight italic">Welcome to the Chat</h3>
             </div>
             <div class="space-y-4">
                 <input type="text" id="modal-user-name" placeholder="您的名字 / お名前" 
@@ -84,7 +92,7 @@
             <div class="flex items-center gap-5">
                 <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-xl ring-4 ring-blue-50">🌍</div>
                 <div>
-                    <h1 class="text-xl font-black text-slate-800 tracking-tighter">雙向翻譯聊天室 <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[10px] ml-1">V2</span></h1>
+                    <h1 class="text-xl font-black text-slate-800 tracking-tighter">雙向翻譯聊天室 <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[10px] ml-1 uppercase">V2 PRO</span></h1>
                     <div class="flex items-center gap-3 mt-1">
                         <div class="flex items-center text-[10px] font-bold text-slate-400">
                             <div class="online-dot animate-pulse"></div>
@@ -93,12 +101,12 @@
                     </div>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="text-right hidden sm:block">
+            <div class="flex items-center gap-4 text-right">
+                <div class="hidden sm:block">
                     <div id="display-user-name" class="text-sm font-black text-blue-600 uppercase">...</div>
-                    <button onclick="promptNameChange()" class="text-[10px] font-bold text-slate-400 hover:text-blue-500 underline">修改姓名 / 変更</button>
+                    <button onclick="promptNameChange()" class="text-[10px] font-bold text-slate-400 hover:text-blue-500 underline uppercase tracking-tighter">Modify / 変更</button>
                 </div>
-                <button onclick="clearChat()" class="p-3 bg-red-50 text-red-300 hover:text-red-500 rounded-2xl transition-all">🗑️</button>
+                <button onclick="clearChat()" class="p-3 bg-red-50 text-red-300 hover:text-red-500 rounded-2xl transition-all shadow-sm">🗑️</button>
             </div>
         </header>
 
@@ -110,49 +118,68 @@
         <!-- Input Area -->
         <section class="p-4 lg:p-8 bg-white border-t border-slate-100">
             <div id="live-trans" class="mb-4 px-5 py-3 bg-slate-800 text-white rounded-2xl shadow-2xl text-xs font-bold hidden flex items-center gap-3">
-                <span class="bg-blue-600 px-2 py-0.5 rounded text-[9px] uppercase">Preview</span>
+                <span class="bg-blue-600 px-2 py-0.5 rounded text-[9px] uppercase tracking-widest">Translate</span>
                 <span id="live-trans-text">...</span>
             </div>
-            <div class="flex gap-4 items-end bg-slate-50 rounded-[2rem] p-3 border border-slate-100 ring-2 ring-blue-500/0 focus-within:ring-blue-500/10 transition-all">
+            <div class="flex gap-4 items-end bg-slate-50 rounded-[2rem] p-3 border border-slate-100 focus-within:ring-4 focus-within:ring-blue-50 transition-all">
                 <textarea id="msg-input" 
                     class="flex-1 bg-transparent border-none outline-none p-3 text-base font-bold text-slate-700 resize-none max-h-32 min-h-[56px] placeholder:text-slate-300"
-                    placeholder="輸入後按 Enter 發送訊息 / 入力して送信..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
+                    placeholder="輸入後按 Enter 傳送 / 入力して送信..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
                 <button onclick="sendMessage()" id="send-btn"
-                    class="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:rotate-6 active:scale-95 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    class="w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                 </button>
             </div>
-            <p class="text-[9px] text-center text-slate-300 mt-4 font-bold uppercase tracking-[0.3em] font-sans">Real-time Chinese-Japanese Translation System</p>
+            <p class="text-[9px] text-center text-slate-300 mt-5 font-bold uppercase tracking-[0.4em]">Optimized Real-time Sync Engine</p>
         </section>
     </div>
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyCqkSEg2FfwdF4yFjZToMaRMbwpRu1P6z0E4uLLNzaxzyT_g4lPjI5RdqyIUn3Kqhy/exec";
-        const KEY_DATA = "FB_CHAT_V2_MESSAGES_FINAL";
+        // 重返 V1 兼容的金鑰，確保 V1/V2 可以互相對話與提醒
+        const KEY_DATA = "FB_CHAT_DYN_v9_BADGE"; 
         const PRES_PREFIX = "PRES_v2_";
         
         let messages = []; let isSending = false; let lastSyncHash = ""; let transTimer = null; let lastTrans = null;
-        let userName = localStorage.getItem('fb_user_v2') || ""; let originalTitle = document.title; let flashTimer = null; let isTabActive = true;
+        let userName = localStorage.getItem('fb_user_v2') || localStorage.getItem('fb_user') || ""; 
+        let originalTitle = document.title; let flashTimer = null; let isTabActive = true;
 
         document.addEventListener("visibilitychange", () => { isTabActive = (document.visibilityState==='visible'); if(isTabActive) dismissAlert(); });
         window.onfocus = () => { isTabActive = true; dismissAlert(); }; window.onblur = () => isTabActive = false;
 
+        function updateFavicon(hasNew) {
+            const favicon = document.getElementById('favicon');
+            if (hasNew) {
+                favicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>🌍</text><circle cx=%2280%22 cy=%2220%22 r=%2225%22 fill=%22red%22 stroke=%22white%22 stroke-width=%225%22/></svg>";
+                if ('setAppBadge' in navigator) navigator.setAppBadge();
+            } else {
+                favicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>";
+                if ('clearAppBadge' in navigator) navigator.clearAppBadge();
+            }
+        }
+
         function triggerAlert(sender) {
             if (isTabActive) return;
+            updateFavicon(true);
             if (!flashTimer) {
-                let show = true; flashTimer = setInterval(() => { document.title = show ? "► 🔔 訊息！ ◄" : originalTitle; show = !show; }, 700);
+                let show = true; 
+                flashTimer = setInterval(() => { 
+                    document.title = show ? "►►► 🔔 新訊息 ◄◄◄" : originalTitle; 
+                    show = !show; 
+                }, 600);
             }
-            document.getElementById('main-frame').classList.add('flash-active');
-            document.getElementById('alert-sender').innerText = `由 ${sender} 送出`;
+            document.body.classList.add('flash-active');
+            document.getElementById('alert-sender').innerText = `SEND BY: ${sender}`;
             document.getElementById('super-alert').classList.add('active');
         }
 
         function dismissAlert() {
             clearInterval(flashTimer); flashTimer = null; document.title = originalTitle;
-            document.getElementById('main-frame').classList.remove('flash-active');
+            document.body.classList.remove('flash-active');
             document.getElementById('super-alert').classList.remove('active');
+            updateFavicon(false);
         }
 
         if (!userName) document.getElementById('name-modal').classList.remove('hidden'); else document.getElementById('display-user-name').innerText = userName;
@@ -167,28 +194,10 @@
             const live = document.getElementById('live-trans');
             const liveText = document.getElementById('live-trans-text');
             const text = el.value.trim();
-
-            // 調整高度的部分盡量精簡
-            if (el.scrollHeight > el.clientHeight) {
-                el.style.height = 'auto';
-                el.style.height = (el.scrollHeight) + 'px';
-            }
-
-            if (!text) { 
-                live.classList.add('hidden'); 
-                lastTrans = null;
-                return; 
-            }
-
-            // 只有在停止打字 200ms 後才啟動翻譯，避免打字卡頓
-            clearTimeout(transTimer);
-            transTimer = setTimeout(async () => {
-                if (el.value.trim() === text) {
-                    const t = await translate(text);
-                    lastTrans = t;
-                    liveText.innerText = t.result;
-                    live.classList.remove('hidden');
-                }
+            if (el.scrollHeight > el.clientHeight) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
+            if (!text) { live.classList.add('hidden'); lastTrans = null; return; }
+            clearTimeout(transTimer); transTimer = setTimeout(async () => {
+                if (el.value.trim() === text) { const t = await translate(text); lastTrans = t; liveText.innerText = t.result; live.classList.remove('hidden'); }
             }, 250);
         }
 
@@ -197,7 +206,7 @@
             document.getElementById('live-trans').classList.add('hidden');
             let t = (lastTrans && lastTrans.origin === text) ? lastTrans : await translate(text);
             const msg = { user: userName, text: text, trans: t.result, time: Date.now() };
-            const updated = [...messages, msg].slice(-80);
+            const updated = [...messages, msg].slice(-100);
             updateUI(updated, false); input.value = ""; input.style.height = "auto"; isSending = false; lastTrans = null;
             postData(KEY_DATA, updated);
         }
@@ -220,7 +229,7 @@
                 }
                 const isMe = m.user === userName;
                 const bubble = document.createElement('div'); bubble.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
-                bubble.innerHTML = `<div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}"><div class="flex items-center gap-2 mb-1 px-3"><span class="text-[9px] font-black text-slate-400 tracking-tight uppercase">${m.user}</span><span class="text-[8px] text-slate-300">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div><div class="p-4 rounded-3xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}"><div class="text-sm font-semibold tracking-tight whitespace-pre-wrap">${m.text}</div><div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-50 text-blue-600'}"><div class="text-[11px] font-bold italic opacity-90">${m.trans}</div></div></div></div>`;
+                bubble.innerHTML = `<div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}"><div class="flex items-center gap-2 mb-1 px-3"><span class="text-[9px] font-black text-slate-400 tracking-tight uppercase">${m.user}</span><span class="text-[8px] text-slate-300">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div><div class="p-4 rounded-3xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500 shadow-blue-100/50' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}"><div class="text-sm font-semibold tracking-tight whitespace-pre-wrap">${m.text}</div><div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-50 text-blue-600'}"><div class="text-[11px] font-bold italic opacity-90">${m.trans}</div></div></div></div>`;
                 container.appendChild(bubble);
             });
             container.scrollTop = container.scrollHeight;
@@ -229,37 +238,24 @@
         async function sync() {
             try {
                 const res = await fetch(GAS_URL); const cloud = await res.json();
-            if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
-            
-            // 抓取所有以 PRES_v2_ 開頭的 Key 來計算在線人員
-            const now = Date.now();
-            const onlineUsers = [];
-            const uniqueUsers = new Set();
-            
-            Object.keys(cloud).forEach(k => {
-                if (k.startsWith(PRES_PREFIX)) {
-                    // 只要在 30 秒內有更新過，就視為在線 (稍微放寬時間)
-                    if (now - cloud[k] < 30000) {
-                        const name = k.replace(PRES_PREFIX, "");
-                        if (!uniqueUsers.has(name)) {
-                            uniqueUsers.add(name);
-                            onlineUsers.push(name);
+                if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
+                const now = Date.now(); const onlineUsers = []; const uniqueUsers = new Set();
+                Object.keys(cloud).forEach(k => {
+                    if (k.startsWith(PRES_PREFIX)) {
+                        if (now - cloud[k] < 30000) {
+                            const name = k.replace(PRES_PREFIX, "");
+                            if (!uniqueUsers.has(name)) { uniqueUsers.add(name); onlineUsers.push(name); }
                         }
                     }
-                }
-            });
-            
-            // 排序名單，讓顯示更穩定不會跳動
-            onlineUsers.sort();
-            document.getElementById('online-list').innerText = onlineUsers.length > 0 ? onlineUsers.join(', ') : '無人';
+                });
+                onlineUsers.sort();
+                document.getElementById('online-list').innerText = onlineUsers.length > 0 ? onlineUsers.join(', ') : '無人';
             } catch (e) { console.error(e); }
         }
 
-        async function heartbeat() { 
-            if (userName) postData(PRES_PREFIX + userName, Date.now()); 
-        }
-        function postData(id, data, isMerge = false) {
-            fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id, data, merge: isMerge }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+        async function heartbeat() { if (userName) postData(PRES_PREFIX + userName, Date.now()); }
+        function postData(id, data) {
+            fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id, data }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
         }
 
         function saveNameFromModal() { const val = document.getElementById('modal-user-name').value.trim(); if (!val) return; userName = val; localStorage.setItem('fb_user_v2', userName); document.getElementById('display-user-name').innerText = userName; document.getElementById('name-modal').classList.add('hidden'); heartbeat(); }
