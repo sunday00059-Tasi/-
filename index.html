@@ -3,108 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedback Technology Japan - 雙向翻譯聊天室</title>
+    <title>Feedback Chat V2 - 雙向翻譯 & 在線協作</title>
     
-    <!-- PWA Manifest (Data URI) -->
-    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIumYpuaZguevsumit+i聊天室IiwKICAic2hvcnRfbmFtZSI6ICLni6zoipLoob3oiYUiLAogICJzdGFydF91cmwiOiAiLi9pbmRleC5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjBmOWZmIiwKICAidGhlbWVfY29sb3IiOiAiIzNiODJmNiIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImh0dHBzOi8vY2RuLWljb25zLW5uZy5mbGF0aWNvbi5jb20vNTEyLzMxMjYvMzEyNjU4OC5wbmciLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0KICBdCn0=">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIumYpuaZguevsumit+i聊天室 V2IiwKICAic2hvcnRfbmFtZSI6ICLni6zoipLoob3oiYUiLAogICJzdGFydF91cmwiOiAiLi9pbmRleF92Mi5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjBmOWZmIiwKICAidGhlbWVfY29sb3IiOiAiIzNiODJmNiIKfQ==">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #3b82f6;
-            --bg-glass: rgba(255, 255, 255, 0.95);
-        }
+        :root { --primary: #3b82f6; --bg-glass: rgba(255, 255, 255, 0.98); }
         body {
             font-family: 'Outfit', 'Microsoft JhengHei', 'Meiryo', sans-serif;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            height: 100vh;
-            overflow: hidden;
-            margin: 0;
-            padding: 0;
-            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            height: 100vh; overflow: hidden; margin: 0; padding: 0;
         }
         .glass-panel {
             background: var(--bg-glass);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 10px 50px -15px rgba(31, 38, 135, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 15px 60px -15px rgba(0, 0, 0, 0.08);
         }
-        .message-bubble {
-            max-width: 75%;
-            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .message-bubble { max-width: 80%; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         
-        #name-modal {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(12px);
-            z-index: 1000;
-        }
-
-        .flash-active {
-            animation: border-pulse 0.8s infinite alternate;
-        }
-        @keyframes border-pulse {
-            from { box-shadow: inset 0 0 0px 0px transparent; }
-            to { box-shadow: inset 0 0 60px 20px rgba(239, 68, 68, 0.6); }
-        }
-
+        #name-modal { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); z-index: 2000; }
+        .flash-active { animation: ring-pulse 1s infinite alternate; }
+        @keyframes ring-pulse { from { box-shadow: inset 0 0 0px transparent; } to { box-shadow: inset 0 0 60px rgba(239, 68, 68, 0.4); } }
+        
         #super-alert {
-            position: fixed;
-            top: -100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #ef4444;
-            color: white;
-            padding: 18px 36px;
-            border-radius: 9999px;
-            font-weight: 950;
-            font-size: 1.25rem;
-            box-shadow: 0 25px 50px rgba(239, 68, 68, 0.5);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            cursor: pointer;
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            white-space: nowrap;
-            border: 2px solid white;
+            position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+            background: #ef4444; color: white; padding: 18px 40px; border-radius: 9999px;
+            font-weight: 800; font-size: 1.1rem; box-shadow: 0 20px 40px rgba(239, 68, 68, 0.3);
+            z-index: 3000; transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            display: flex; align-items: center; gap: 15px; cursor: pointer; border: 2px solid white;
         }
-        #super-alert.active {
-            top: 50px;
+        #super-alert.active { top: 30px; }
+
+        .date-divider {
+            display: flex; align-items: center; text-align: center; color: #94a3b8; font-size: 11px; font-weight: 700; margin: 2rem 0;
         }
+        .date-divider::before, .date-divider::after { content: ''; flex: 1; border-bottom: 1px solid #e2e8f0; }
+        .date-divider span { padding: 0 1.5rem; letter-spacing: 0.1em; }
+
+        .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-right: 6px; }
     </style>
-    <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
 </head>
 <body class="flex items-center justify-center p-2 lg:p-4">
 
-    <!-- Failsafe Alert -->
+    <!-- Alert Banner -->
     <div id="super-alert" onclick="dismissAlert()">
-        <span class="text-3xl animate-bounce">🚨</span>
-        <div class="text-left">
-            <div class="leading-tight text-white">有人呼叫您！ (新着)</div>
-            <div class="text-[10px] opacity-90 font-bold tracking-widest uppercase">From: <span id="alert-sender">...</span></div>
-        </div>
+        <span class="text-2xl animate-bounce">📢</span>
+        <div>有新對話！ (新着) <span id="alert-sender" class="ml-2 opacity-80 text-sm"></span></div>
     </div>
 
     <!-- Name Modal -->
     <div id="name-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-[2.5rem] p-8 lg:p-10 max-w-md w-full shadow-2xl space-y-8">
+        <div class="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl space-y-8">
             <div class="text-center space-y-2">
-                <div class="text-6xl mb-4 text-blue-600">👤</div>
-                <h2 class="text-2xl font-bold text-slate-800 tracking-tight">歡迎進場對話</h2>
-                <h3 class="text-lg font-bold text-blue-600 italic leading-tight">チャットルームへ</h3>
-                <p class="text-sm text-slate-400 font-medium tracking-wide">請輸入姓名以開始 / 名前を入力してください</p>
+                <div class="text-6xl mb-4">🖐️</div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">請輸入您的姓名</h2>
+                <h3 class="text-sm font-bold text-blue-500 italic uppercase tracking-widest leading-tight">名前を入力してください</h3>
             </div>
             <div class="space-y-4">
-                <input type="text" id="modal-user-name" placeholder="您的姓名 / お名前" 
-                    class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 text-base font-bold outline-none focus:border-blue-500 transition-all text-slate-700"
+                <input type="text" id="modal-user-name" placeholder="您的名字 / お名前" 
+                    class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-5 text-lg font-bold outline-none focus:border-blue-500 transition-all text-slate-700"
                     onkeydown="if(event.key==='Enter') saveNameFromModal()">
                 <button onclick="saveNameFromModal()" 
                     class="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all">
@@ -114,138 +78,155 @@
         </div>
     </div>
 
-    <div id="main-frame" class="w-full max-w-5xl h-full flex flex-col glass-panel rounded-[2.5rem] overflow-hidden relative border border-white/60">
-        <header class="p-4 lg:p-6 border-b border-white/50 flex justify-between items-center bg-white/30 backdrop-blur-md">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg ring-4 ring-blue-50">
-                    ⚡
-                </div>
+    <div id="main-frame" class="w-full max-w-6xl h-full flex flex-col glass-panel rounded-[3rem] overflow-hidden relative border border-white/60">
+        <!-- Header -->
+        <header class="p-4 lg:p-8 border-b border-slate-100 flex justify-between items-center bg-white/40">
+            <div class="flex items-center gap-5">
+                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-xl ring-4 ring-blue-50">🌍</div>
                 <div>
-                    <h1 class="text-lg font-bold text-slate-800 tracking-tight">即時翻譯聊天室</h1>
-                    <div class="flex items-center gap-2 text-emerald-500">
-                        <div class="w-2 h-2 rounded-full bg-current animate-pulse"></div>
-                        <p class="text-[9px] font-black uppercase tracking-[0.2em]">Live Notification Sync</p>
+                    <h1 class="text-xl font-black text-slate-800 tracking-tighter">雙向翻譯聊天室 <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[10px] ml-1">V2</span></h1>
+                    <div class="flex items-center gap-3 mt-1">
+                        <div class="flex items-center text-[10px] font-bold text-slate-400">
+                            <div class="online-dot animate-pulse"></div>
+                            線上人員 / 接続中：<span id="online-list" class="text-emerald-500 ml-1">...</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="flex gap-4 items-center">
-                <div class="hidden lg:flex flex-col items-end">
-                    <span id="display-user-name" class="text-sm font-black text-blue-600 uppercase">...</span>
-                    <button onclick="promptNameChange()" class="text-[10px] text-blue-400 hover:underline">修改/變更</button>
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <div id="display-user-name" class="text-sm font-black text-blue-600 uppercase">...</div>
+                    <button onclick="promptNameChange()" class="text-[10px] font-bold text-slate-400 hover:text-blue-500 underline">修改姓名 / 変更</button>
                 </div>
-                <button onclick="clearChat()" class="p-3 hover:bg-red-50 text-red-300 hover:text-red-500 rounded-2xl transition-all">🗑️</button>
+                <button onclick="clearChat()" class="p-3 bg-red-50 text-red-300 hover:text-red-500 rounded-2xl transition-all">🗑️</button>
             </div>
         </header>
 
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 lg:p-10 space-y-8 scrollbar-hide">
-            <!-- Messages here -->
+        <!-- Chat Container -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 lg:p-10 space-y-6 scrollbar-hide bg-gradient-to-b from-white to-slate-50/30">
+            <!-- Messages go here -->
         </div>
 
-        <section class="p-4 lg:p-6 bg-white/50 border-t border-white/80">
-            <div id="live-trans" class="mb-3 px-5 py-2.5 bg-blue-600 text-white rounded-2xl shadow-xl text-xs font-bold hidden animate-bounce">
-                💬 預覽：<span id="live-trans-text">...</span>
+        <!-- Input Area -->
+        <section class="p-4 lg:p-8 bg-white border-t border-slate-100">
+            <div id="live-trans" class="mb-4 px-5 py-3 bg-slate-800 text-white rounded-2xl shadow-2xl text-xs font-bold hidden flex items-center gap-3">
+                <span class="bg-blue-600 px-2 py-0.5 rounded text-[9px] uppercase">Preview</span>
+                <span id="live-trans-text">...</span>
             </div>
-            <div class="flex gap-4 items-end bg-white rounded-[1.5rem] p-3 shadow-2xl border border-slate-100">
+            <div class="flex gap-4 items-end bg-slate-50 rounded-[2rem] p-3 border border-slate-100 ring-2 ring-blue-500/0 focus-within:ring-blue-500/10 transition-all">
                 <textarea id="msg-input" 
-                    class="flex-1 bg-transparent border-none outline-none p-3 text-sm font-bold text-slate-700 resize-none max-h-32 min-h-[48px]"
-                    placeholder="輸入後按 Enter 傳送 / 入力して送信..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
+                    class="flex-1 bg-transparent border-none outline-none p-3 text-base font-bold text-slate-700 resize-none max-h-32 min-h-[56px] placeholder:text-slate-300"
+                    placeholder="輸入後按 Enter 發送訊息 / 入力して送信..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
                 <button onclick="sendMessage()" id="send-btn"
-                    class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl hover:bg-blue-700 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    class="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:rotate-6 active:scale-95 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                 </button>
             </div>
+            <p class="text-[9px] text-center text-slate-300 mt-4 font-bold uppercase tracking-[0.3em] font-sans">Real-time Chinese-Japanese Translation System</p>
         </section>
     </div>
 
     <script>
-        // Service Worker for PWA (Inline Data URI)
-        if ('serviceWorker' in navigator) {
-            const swCode = "self.addEventListener('fetch', function(e) {});";
-            const swBlob = new Blob([swCode], {type: 'application/javascript'});
-            const swUrl = URL.createObjectURL(swBlob);
-            navigator.serviceWorker.register(swUrl).catch(e => console.log('SW failed', e));
-        }
-
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyCqkSEg2FfwdF4yFjZToMaRMbwpRu1P6z0E4uLLNzaxzyT_g4lPjI5RdqyIUn3Kqhy/exec";
-        const CHAT_KEY = "FB_CHAT_DYN_v10_PWA";
-        let messages = []; let isSending = false; let lastSyncHash = ""; let transTimer = null; let lastTranslatedResult = null;
-        let userName = localStorage.getItem('fb_user') || ""; let originalTitle = document.title; let titleFlashTimer = null; let isTabActive = true;
+        const KEY_DATA = "FB_CHAT_V2_MESSAGES_FINAL";
+        const KEY_PRES = "FB_CHAT_V2_PRESENCE_FINAL";
+        
+        let messages = []; let isSending = false; let lastSyncHash = ""; let transTimer = null; let lastTrans = null;
+        let userName = localStorage.getItem('fb_user_v2') || ""; let originalTitle = document.title; let flashTimer = null; let isTabActive = true;
 
-        document.addEventListener("visibilitychange", () => { isTabActive = (document.visibilityState === 'visible'); if (isTabActive) dismissAlert(); });
-        window.onfocus = () => { isTabActive = true; dismissAlert(); };
-        window.onblur = () => { isTabActive = false; };
+        document.addEventListener("visibilitychange", () => { isTabActive = (document.visibilityState==='visible'); if(isTabActive) dismissAlert(); });
+        window.onfocus = () => { isTabActive = true; dismissAlert(); }; window.onblur = () => isTabActive = false;
 
-        function updateFavicon(hasNew) {
-            const favicon = document.getElementById('favicon');
-            favicon.href = hasNew ? "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>🌍</text><circle cx=%2280%22 cy=%2220%22 r=%2220%22 fill=%22red%22/></svg>" : "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>";
-            if (hasNew && 'setAppBadge' in navigator) navigator.setAppBadge();
-            else if ('clearAppBadge' in navigator) navigator.clearAppBadge();
-        }
-
-        function triggerUltraAlert(sender) {
+        function triggerAlert(sender) {
             if (isTabActive) return;
-            updateFavicon(true);
-            if (!titleFlashTimer) {
-                let show = true; titleFlashTimer = setInterval(() => { document.title = show ? "►►► 🔔 新訊息 ◄◄◄" : originalTitle; show = !show; }, 600);
+            if (!flashTimer) {
+                let show = true; flashTimer = setInterval(() => { document.title = show ? "► 🔔 訊息！ ◄" : originalTitle; show = !show; }, 700);
             }
-            document.body.classList.add('flash-active');
-            const alertBox = document.getElementById('super-alert');
-            document.getElementById('alert-sender').innerText = sender;
-            alertBox.classList.add('active');
+            document.getElementById('main-frame').classList.add('flash-active');
+            document.getElementById('alert-sender').innerText = `由 ${sender} 送出`;
+            document.getElementById('super-alert').classList.add('active');
         }
 
         function dismissAlert() {
-            clearInterval(titleFlashTimer); titleFlashTimer = null; document.title = originalTitle;
-            document.body.classList.remove('flash-active'); document.getElementById('super-alert').classList.remove('active');
-            updateFavicon(false);
+            clearInterval(flashTimer); flashTimer = null; document.title = originalTitle;
+            document.getElementById('main-frame').classList.remove('flash-active');
+            document.getElementById('super-alert').classList.remove('active');
         }
 
         if (!userName) document.getElementById('name-modal').classList.remove('hidden'); else document.getElementById('display-user-name').innerText = userName;
 
         async function translate(text) {
             if (!text) return ""; const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(text); const sl = isJp ? 'ja' : 'zh-TW'; const tl = isJp ? 'zh-TW' : 'ja';
-            try { const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`); const json = await res.json(); return { result: json[0].map(p => p[0]).join(''), origin: text }; } catch (e) { return { result: "Error", origin: text }; }
+            try { const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`); const json = await res.json(); return { result: json[0].map(p => p[0]).join(''), origin: text }; } catch (e) { return { result: "...", origin: text }; }
         }
 
         function handleInput() {
             const el = document.getElementById('msg-input'); const live = document.getElementById('live-trans'); const liveText = document.getElementById('live-trans-text'); const text = el.value.trim();
-            el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; if (!text) { live.classList.add('hidden'); return; }
-            clearTimeout(transTimer); transTimer = setTimeout(async () => { if (el.value.trim() === text) { const trans = await translate(text); lastTranslatedResult = trans; liveText.innerText = trans.result; live.classList.remove('hidden'); } }, 400);
+            el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px';
+            if (!text) { live.classList.add('hidden'); return; }
+            clearTimeout(transTimer); transTimer = setTimeout(async () => {
+                if (el.value.trim() === text) { const t = await translate(text); lastTrans = t; liveText.innerText = t.result; live.classList.remove('hidden'); }
+            }, 300);
         }
 
         async function sendMessage() {
             const input = document.getElementById('msg-input'); const text = input.value.trim(); if (!text || isSending) return; isSending = true;
-            document.getElementById('live-trans').classList.add('hidden'); let trans = (lastTranslatedResult && lastTranslatedResult.origin === text) ? lastTranslatedResult : await translate(text);
-            const newMessage = { user: userName, text: text, trans: trans.result, time: Date.now() }; const updated = [...messages, newMessage].slice(-60);
-            updateUI(updated, false); input.value = ""; input.style.height = "auto"; isSending = false; lastTranslatedResult = null;
-            fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id: CHAT_KEY, data: updated }), headers: { "Content-Type": "text/plain;charset=utf-8" } }).catch(e => console.error(e));
+            document.getElementById('live-trans').classList.add('hidden');
+            let t = (lastTrans && lastTrans.origin === text) ? lastTrans : await translate(text);
+            const msg = { user: userName, text: text, trans: t.result, time: Date.now() };
+            const updated = [...messages, msg].slice(-80);
+            updateUI(updated, false); input.value = ""; input.style.height = "auto"; isSending = false; lastTrans = null;
+            postData(KEY_DATA, updated);
         }
 
         function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
 
-        function updateUI(newMessages, soundOnNew = true) {
-            const lastMsg = newMessages[newMessages.length - 1]; const currentLastMsg = messages[messages.length - 1]; const isActuallyNew = lastMsg && (!currentLastMsg || lastMsg.time > currentLastMsg.time);
-            if (JSON.stringify(newMessages) === lastSyncHash) return; lastSyncHash = JSON.stringify(newMessages); if (soundOnNew && isActuallyNew && lastMsg.user !== userName) triggerUltraAlert(lastMsg.user);
-            messages = newMessages; const container = document.getElementById('chat-messages'); container.innerHTML = "";
+        function updateUI(newList, playAlert = true) {
+            const last = newList[newList.length - 1]; const current = messages[messages.length - 1]; const isNew = last && (!current || last.time > current.time);
+            if (JSON.stringify(newList) === lastSyncHash) return;
+            lastSyncHash = JSON.stringify(newList);
+            if (playAlert && isNew && last.user !== userName) triggerAlert(last.user);
+            messages = newList;
+            const container = document.getElementById('chat-messages'); container.innerHTML = "";
+            let lastDate = "";
             messages.forEach(m => {
+                const dateStr = new Date(m.time).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                if (dateStr !== lastDate) {
+                    const div = document.createElement('div'); div.className = "date-divider text-center"; div.innerHTML = `<span>${dateStr}</span>`;
+                    container.appendChild(div); lastDate = dateStr;
+                }
                 const isMe = m.user === userName;
                 const bubble = document.createElement('div'); bubble.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
-                bubble.innerHTML = `<div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}"><div class="flex items-center gap-2 mb-1 px-3"><span class="text-[9px] font-black text-slate-400 tracking-tight uppercase">${m.user}</span><span class="text-[8px] text-slate-300 uppercase">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div><div class="p-4 rounded-3xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500 shadow-blue-100' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}"><div class="text-sm font-semibold leading-relaxed">${m.text}</div><div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-100'}"><div class="text-[11px] font-bold italic ${isMe ? 'text-blue-100' : 'text-blue-600'}">${m.trans}</div></div></div></div>`;
+                bubble.innerHTML = `<div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}"><div class="flex items-center gap-2 mb-1 px-3"><span class="text-[9px] font-black text-slate-400 tracking-tight uppercase">${m.user}</span><span class="text-[8px] text-slate-300">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div><div class="p-4 rounded-3xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}"><div class="text-sm font-semibold tracking-tight whitespace-pre-wrap">${m.text}</div><div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-50 text-blue-600'}"><div class="text-[11px] font-bold italic opacity-90">${m.trans}</div></div></div></div>`;
                 container.appendChild(bubble);
             });
             container.scrollTop = container.scrollHeight;
         }
 
-        async function fetchMessages() {
-            try { const res = await fetch(GAS_URL); const cloud = await res.json(); if (cloud && cloud[CHAT_KEY]) { updateUI(cloud[CHAT_KEY]); document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse"; } } catch (e) { document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-red-400"; }
+        async function sync() {
+            try {
+                const res = await fetch(GAS_URL); const cloud = await res.json();
+                if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
+                if (cloud && cloud[KEY_PRES]) {
+                    const pres = cloud[KEY_PRES]; const now = Date.now();
+                    const online = Object.keys(pres).filter(u => now - pres[u] < 20000);
+                    document.getElementById('online-list').innerText = online.length > 0 ? online.join(', ') : '無人';
+                }
+            } catch (e) { console.error(e); }
         }
 
-        function saveNameFromModal() { const val = document.getElementById('modal-user-name').value.trim(); if (!val) return; userName = val; localStorage.setItem('fb_user', userName); document.getElementById('display-user-name').innerText = userName; document.getElementById('name-modal').classList.add('hidden'); }
-        function promptNameChange() { const newVal = prompt("請輸入新的姓名 (中文或日文)：\n新しい名前を入力してください：", userName); if (newVal && newVal.trim()) { userName = newVal.trim(); localStorage.setItem('fb_user', userName); document.getElementById('display-user-name').innerText = userName; updateUI(messages, false); } }
-        function clearChat() { if (!confirm("確定要刪除聊天紀錄嗎？清除後不可復原。\nチャット履歴を削除してもよろしいですか？")) return; fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id: CHAT_KEY, data: [] }), headers: { "Content-Type": "text/plain;charset=utf-8" } }).then(() => updateUI([], false)); }
-        setInterval(fetchMessages, 3500); fetchMessages();
+        async function heartbeat() { if (userName) postData(KEY_PRES, { [userName]: Date.now() }, true); }
+        function postData(id, data, isMerge = false) {
+            fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id, data, merge: isMerge }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+        }
+
+        function saveNameFromModal() { const val = document.getElementById('modal-user-name').value.trim(); if (!val) return; userName = val; localStorage.setItem('fb_user_v2', userName); document.getElementById('display-user-name').innerText = userName; document.getElementById('name-modal').classList.add('hidden'); heartbeat(); }
+        function promptNameChange() { const newVal = prompt("新的姓名 / 新しい名前：", userName); if (newVal && newVal.trim()) { userName = newVal.trim(); localStorage.setItem('fb_user_v2', userName); document.getElementById('display-user-name').innerText = userName; updateUI(messages, false); heartbeat(); } }
+        function clearChat() { if (!confirm("清空歷史紀錄嗎？ / 履歴を削除しますか？")) return; postData(KEY_DATA, []); updateUI([]); }
+
+        setInterval(sync, 4000); setInterval(heartbeat, 10000); sync(); heartbeat();
     </script>
 </body>
 </html>
