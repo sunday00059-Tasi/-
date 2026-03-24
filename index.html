@@ -131,7 +131,7 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyCqkSEg2FfwdF4yFjZToMaRMbwpRu1P6z0E4uLLNzaxzyT_g4lPjI5RdqyIUn3Kqhy/exec";
         const KEY_DATA = "FB_CHAT_V2_MESSAGES_FINAL";
-        const KEY_PRES = "FB_CHAT_V2_PRESENCE_FINAL";
+        const PRES_PREFIX = "PRES_v2_";
         
         let messages = []; let isSending = false; let lastSyncHash = ""; let transTimer = null; let lastTrans = null;
         let userName = localStorage.getItem('fb_user_v2') || ""; let originalTitle = document.title; let flashTimer = null; let isTabActive = true;
@@ -208,16 +208,25 @@
         async function sync() {
             try {
                 const res = await fetch(GAS_URL); const cloud = await res.json();
-                if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
-                if (cloud && cloud[KEY_PRES]) {
-                    const pres = cloud[KEY_PRES]; const now = Date.now();
-                    const online = Object.keys(pres).filter(u => now - pres[u] < 20000);
-                    document.getElementById('online-list').innerText = online.length > 0 ? online.join(', ') : '無人';
+            if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
+            
+            // 抓取所有以 PRES_v2_ 開頭的 Key 來計算在線人員
+            const now = Date.now();
+            const onlineUsers = [];
+            Object.keys(cloud).forEach(k => {
+                if (k.startsWith(PRES_PREFIX)) {
+                    if (now - cloud[k] < 25000) {
+                        onlineUsers.push(k.replace(PRES_PREFIX, ""));
+                    }
                 }
+            });
+            document.getElementById('online-list').innerText = onlineUsers.length > 0 ? onlineUsers.join(', ') : '無人';
             } catch (e) { console.error(e); }
         }
 
-        async function heartbeat() { if (userName) postData(KEY_PRES, { [userName]: Date.now() }, true); }
+        async function heartbeat() { 
+            if (userName) postData(PRES_PREFIX + userName, Date.now()); 
+        }
         function postData(id, data, isMerge = false) {
             fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id, data, merge: isMerge }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
         }
