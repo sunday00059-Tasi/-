@@ -163,12 +163,33 @@
         }
 
         function handleInput() {
-            const el = document.getElementById('msg-input'); const live = document.getElementById('live-trans'); const liveText = document.getElementById('live-trans-text'); const text = el.value.trim();
-            el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px';
-            if (!text) { live.classList.add('hidden'); return; }
-            clearTimeout(transTimer); transTimer = setTimeout(async () => {
-                if (el.value.trim() === text) { const t = await translate(text); lastTrans = t; liveText.innerText = t.result; live.classList.remove('hidden'); }
-            }, 300);
+            const el = document.getElementById('msg-input');
+            const live = document.getElementById('live-trans');
+            const liveText = document.getElementById('live-trans-text');
+            const text = el.value.trim();
+
+            // 調整高度的部分盡量精簡
+            if (el.scrollHeight > el.clientHeight) {
+                el.style.height = 'auto';
+                el.style.height = (el.scrollHeight) + 'px';
+            }
+
+            if (!text) { 
+                live.classList.add('hidden'); 
+                lastTrans = null;
+                return; 
+            }
+
+            // 只有在停止打字 200ms 後才啟動翻譯，避免打字卡頓
+            clearTimeout(transTimer);
+            transTimer = setTimeout(async () => {
+                if (el.value.trim() === text) {
+                    const t = await translate(text);
+                    lastTrans = t;
+                    liveText.innerText = t.result;
+                    live.classList.remove('hidden');
+                }
+            }, 250);
         }
 
         async function sendMessage() {
@@ -213,13 +234,23 @@
             // 抓取所有以 PRES_v2_ 開頭的 Key 來計算在線人員
             const now = Date.now();
             const onlineUsers = [];
+            const uniqueUsers = new Set();
+            
             Object.keys(cloud).forEach(k => {
                 if (k.startsWith(PRES_PREFIX)) {
-                    if (now - cloud[k] < 25000) {
-                        onlineUsers.push(k.replace(PRES_PREFIX, ""));
+                    // 只要在 30 秒內有更新過，就視為在線 (稍微放寬時間)
+                    if (now - cloud[k] < 30000) {
+                        const name = k.replace(PRES_PREFIX, "");
+                        if (!uniqueUsers.has(name)) {
+                            uniqueUsers.add(name);
+                            onlineUsers.push(name);
+                        }
                     }
                 }
             });
+            
+            // 排序名單，讓顯示更穩定不會跳動
+            onlineUsers.sort();
             document.getElementById('online-list').innerText = onlineUsers.length > 0 ? onlineUsers.join(', ') : '無人';
             } catch (e) { console.error(e); }
         }
