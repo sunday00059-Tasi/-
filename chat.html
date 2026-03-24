@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Technology Japan - 雙向翻譯聊天室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg-glass: rgba(255, 255, 255, 0.95);
+        }
+        body {
+            font-family: 'Outfit', 'Microsoft JhengHei', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 50px -15px rgba(31, 38, 135, 0.1);
+        }
+        .message-bubble {
+            max-width: 75%;
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        #name-modal {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-2 lg:p-4">
+
+    <!-- Name Modal -->
+    <div id="name-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="text-4xl mb-3">👋</div>
+                <h2 class="text-xl font-bold text-slate-800">歡迎進入翻譯聊天室</h2>
+                <p class="text-sm text-slate-500 mt-2">請輸入您的姓名以開始對話</p>
+            </div>
+            <input type="text" id="modal-user-name" placeholder="您的姓名 (如: 王小明)" 
+                class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-blue-500 transition-all text-slate-700"
+                onkeydown="if(event.key==='Enter') saveNameFromModal()">
+            <button onclick="saveNameFromModal()" 
+                class="w-full mt-6 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all">
+                開始聊天
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-5xl h-full flex flex-col glass-panel rounded-[2.5rem] overflow-hidden relative">
+        <!-- Header -->
+        <header class="p-4 lg:p-6 border-b border-white/50 flex justify-between items-center bg-white/30">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg">
+                    🌍
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800 tracking-tight">即時翻譯聊天室</h1>
+                    <div class="flex items-center gap-2">
+                        <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Cloud Synchronized</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-4 items-center">
+                <div class="flex items-center gap-2 bg-white/50 px-4 py-2 rounded-full border border-white/80 shadow-sm">
+                    <span class="text-[10px] font-black text-slate-400">目前使用者：</span>
+                    <span id="display-user-name" class="text-xs font-bold text-blue-600">...</span>
+                    <button onclick="promptNameChange()" class="text-[10px] text-blue-400 hover:underline ml-1">修改</button>
+                </div>
+                <button onclick="clearChat()" title="清除紀錄" class="p-2 hover:bg-red-50 text-red-300 hover:text-red-500 rounded-xl transition-colors">🗑️</button>
+            </div>
+        </header>
+
+        <!-- Message List -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 scrollbar-hide bg-white/5">
+            <!-- Messages will be injected here -->
+        </div>
+
+        <!-- Input Area -->
+        <section class="p-4 lg:p-6 bg-white/50 border-t border-white/80">
+            <div id="live-trans" class="mb-3 px-4 py-2 bg-blue-600 text-white rounded-xl shadow-lg text-xs font-bold hidden animate-pulse">
+                預覽翻譯：<span id="live-trans-text">...</span>
+            </div>
+            <div class="flex gap-3 items-end bg-white rounded-2xl p-2 shadow-xl border border-slate-100 ring-1 ring-slate-200/20">
+                <textarea id="msg-input" 
+                    class="flex-1 bg-transparent border-none outline-none p-3 text-sm font-bold text-slate-700 resize-none max-h-32 min-h-[48px]"
+                    placeholder="輸入中文或日文，系統將自動翻譯..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
+                <button onclick="sendMessage()" id="send-btn"
+                    class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyCqkSEg2FfwdF4yFjZToMaRMbwpRu1P6z0E4uLLNzaxzyT_g4lPjI5RdqyIUn3Kqhy/exec";
+        const CHAT_KEY = "FB_CHAT_DYNAMIC_v4";
+        
+        let messages = [];
+        let isSending = false;
+        let lastSyncHash = "";
+        let transTimer = null;
+        let lastTranslatedResult = null;
+        let userName = localStorage.getItem('fb_user') || "";
+
+        if (!userName) {
+            document.getElementById('name-modal').classList.remove('hidden');
+        } else {
+            document.getElementById('display-user-name').innerText = userName;
+        }
+
+        async function translate(text) {
+            if (!text) return "";
+            const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(text);
+            const sl = isJp ? 'ja' : 'zh-TW';
+            const tl = isJp ? 'zh-TW' : 'ja';
+            try {
+                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`);
+                const json = await res.json();
+                const result = json[0].map(p => p[0]).join('');
+                return { result: result, origin: text };
+            } catch (e) { return { result: "Error", origin: text }; }
+        }
+
+        function handleInput() {
+            const el = document.getElementById('msg-input');
+            const live = document.getElementById('live-trans');
+            const liveText = document.getElementById('live-trans-text');
+            const text = el.value.trim();
+
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+
+            if (!text) { live.classList.add('hidden'); return; }
+
+            clearTimeout(transTimer);
+            transTimer = setTimeout(async () => {
+                if (el.value.trim() === text) {
+                    const trans = await translate(text);
+                    lastTranslatedResult = trans;
+                    liveText.innerText = trans.result;
+                    live.classList.remove('hidden');
+                }
+            }, 400);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (!text || isSending) return;
+
+            isSending = true;
+            document.getElementById('live-trans').classList.add('hidden');
+            
+            let trans;
+            if (lastTranslatedResult && lastTranslatedResult.origin === text) {
+                trans = lastTranslatedResult;
+            } else {
+                trans = await translate(text);
+            }
+            
+            const newMessage = {
+                user: userName,
+                text: text,
+                trans: trans.result,
+                time: Date.now()
+            };
+
+            const updated = [...messages, newMessage].slice(-60);
+            updateUI(updated);
+            
+            input.value = "";
+            input.style.height = "auto";
+            isSending = false;
+            lastTranslatedResult = null;
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ id: CHAT_KEY, data: updated }),
+                headers: { "Content-Type": "text/plain;charset=utf-8" }
+            }).catch(e => console.error(e));
+        }
+
+        function handleKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function updateUI(newMessages) {
+            if (JSON.stringify(newMessages) === lastSyncHash) return;
+            lastSyncHash = JSON.stringify(newMessages);
+            messages = newMessages;
+
+            const container = document.getElementById('chat-messages');
+            const oldScrollHeight = container.scrollHeight;
+
+            container.innerHTML = "";
+            messages.forEach(m => {
+                const isMe = m.user === userName;
+                const bubble = document.createElement('div');
+                bubble.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+                
+                bubble.innerHTML = `
+                    <div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        <div class="flex items-center gap-2 mb-1 px-2">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">${m.user}</span>
+                            <span class="text-[8px] text-slate-300 uppercase">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <div class="p-4 rounded-2xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}">
+                            <div class="text-sm font-semibold leading-relaxed">${m.text}</div>
+                            <div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-100'}">
+                                <div class="text-[11px] font-bold italic ${isMe ? 'text-blue-100' : 'text-blue-600'}">${m.trans}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(bubble);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function fetchMessages() {
+            try {
+                const res = await fetch(GAS_URL);
+                const cloud = await res.json();
+                if (cloud && cloud[CHAT_KEY]) {
+                    updateUI(cloud[CHAT_KEY]);
+                    document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
+                }
+            } catch (e) {
+                document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-red-400";
+            }
+        }
+
+        function saveNameFromModal() {
+            const val = document.getElementById('modal-user-name').value.trim();
+            if (!val) return;
+            userName = val;
+            localStorage.setItem('fb_user', userName);
+            document.getElementById('display-user-name').innerText = userName;
+            document.getElementById('name-modal').classList.add('hidden');
+        }
+
+        function promptNameChange() {
+            const newVal = prompt("請輸入新的姓名：", userName);
+            if (newVal && newVal.trim()) {
+                userName = newVal.trim();
+                localStorage.setItem('fb_user', userName);
+                document.getElementById('display-user-name').innerText = userName;
+                updateUI(messages); // Refresh UI to update self/others logic
+            }
+        }
+
+        function clearChat() {
+            if (!confirm("確定要刪除聊天紀錄嗎？")) return;
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ id: CHAT_KEY, data: [] }),
+                headers: { "Content-Type": "text/plain;charset=utf-8" }
+            }).then(() => updateUI([]));
+        }
+
+        setInterval(fetchMessages, 3000);
+        fetchMessages();
+    </script>
+</body>
+</html>
