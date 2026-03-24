@@ -92,7 +92,7 @@
             <div class="flex items-center gap-5">
                 <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-xl ring-4 ring-blue-50">🌍</div>
                 <div>
-                    <h1 class="text-xl font-black text-slate-800 tracking-tighter">雙向翻譯聊天室 <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[10px] ml-1 uppercase">V2 PRO</span></h1>
+                    <h1 class="text-xl font-black text-slate-800 tracking-tighter">雙向翻譯聊天室 <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[10px] ml-1 uppercase">v2.1 PRO</span></h1>
                     <div class="flex items-center gap-3 mt-1">
                         <div class="flex items-center text-[10px] font-bold text-slate-400">
                             <div class="online-dot animate-pulse"></div>
@@ -186,7 +186,11 @@
 
         async function translate(text) {
             if (!text) return ""; const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(text); const sl = isJp ? 'ja' : 'zh-TW'; const tl = isJp ? 'zh-TW' : 'ja';
-            try { const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`); const json = await res.json(); return { result: json[0].map(p => p[0]).join(''), origin: text }; } catch (e) { return { result: "...", origin: text }; }
+            try { 
+                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}&t=${Date.now()}`); 
+                const json = await res.json(); 
+                return { result: json[0].map(p => p[0]).join(''), origin: text }; 
+            } catch (e) { return { result: "...", origin: text }; }
         }
 
         function handleInput() {
@@ -237,7 +241,9 @@
 
         async function sync() {
             try {
-                const res = await fetch(GAS_URL); const cloud = await res.json();
+                // 加入時間戳記避免 GitHub Pages 或手機瀏覽器快取舊資料
+                const res = await fetch(`${GAS_URL}?t=${Date.now()}`); 
+                const cloud = await res.json();
                 if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
                 const now = Date.now(); const onlineUsers = []; const uniqueUsers = new Set();
                 Object.keys(cloud).forEach(k => {
