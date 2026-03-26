@@ -1,781 +1,274 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
     <meta charset="UTF-8">
-    <title>Feedback Technology Japan 製造工作排程系統 v4.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Chat V2 - 雙向翻譯 & 在線協作</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIumYpuaZguevsumit+i聊天室 V2IiwKICAic2hvcnRfbmFtZSI6ICLni6zoipLoob3oiYUiLAogICJzdGFydF91cmwiOiAiLi9pbmRleC5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjBmOWZmIiwKICAidGhlbWVfY29sb3IiOiAiIzNiODJmNiIKfQ==">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
+        :root { --primary: #3b82f6; --bg-glass: rgba(255, 255, 255, 0.98); }
         body {
-            font-family: 'Microsoft JhengHei', 'Meiryo', sans-serif;
+            font-family: 'Outfit', 'Microsoft JhengHei', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            height: 100vh; overflow: hidden; margin: 0; padding: 0;
+            transition: all 0.3s ease;
         }
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 15px 60px -15px rgba(0, 0, 0, 0.08);
+        }
+        .message-bubble { max-width: 80%; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        #name-modal { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); z-index: 2000; }
+        .flash-active { animation: ring-pulse 1s infinite alternate !important; }
+        @keyframes ring-pulse { 
+            from { box-shadow: inset 0 0 0px transparent; } 
+            to { box-shadow: inset 0 0 80px rgba(239, 68, 68, 0.6); } 
+        }
+        
+        #super-alert {
+            position: fixed; top: -120px; left: 50%; transform: translateX(-50%);
+            background: #ef4444; color: white; padding: 18px 40px; border-radius: 9999px;
+            font-weight: 800; font-size: 1.15rem; box-shadow: 0 30px 60px rgba(239, 68, 68, 0.4);
+            z-index: 3000; transition: all 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            display: flex; align-items: center; gap: 15px; cursor: pointer; border: 2px solid white;
+        }
+        #super-alert.active { top: 40px; }
 
-        .sidebar {
-            width: 240px;
-            height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            background: #1e293b;
-            color: white;
-            z-index: 50;
+        .date-divider {
+            display: flex; align-items: center; text-align: center; color: #94a3b8; font-size: 11px; font-weight: 700; margin: 2rem 0;
         }
-
-        .main-content {
-            margin-left: 240px;
-            padding: 2rem;
-            min-height: 100vh;
-        }
-
-        .active-nav {
-            background: #334155;
-            border-left: 4px solid #3b82f6;
-        }
-
-        .translation-box {
-            font-size: 0.85rem;
-            color: #2563eb;
-            background: #f0f7ff;
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-top: 6px;
-            white-space: pre-wrap;
-            border: 1px solid #dbeafe;
-        }
-
-        .dept-active {
-            background: #3b82f6 !important;
-            color: white !important;
-            font-weight: bold;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-            line-height: 1.6;
-            width: 100%;
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            outline: none;
-            font-weight: bold;
-        }
+        .date-divider::before, .date-divider::after { content: ''; flex: 1; border-bottom: 1px solid #e2e8f0; }
+        .date-divider span { padding: 0 1.5rem; letter-spacing: 0.1em; }
+        .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-right: 6px; }
     </style>
+    <!-- Dynamic Favicon Container -->
+    <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
 </head>
+<body class="flex items-center justify-center p-2 lg:p-4">
 
-<body class="bg-slate-50">
+    <!-- Alert Banner -->
+    <div id="super-alert" onclick="dismissAlert()">
+        <span class="text-3xl animate-bounce">📢</span>
+        <div class="text-left">
+            <div class="leading-tight">有新對話！ (新着)</div>
+            <div id="alert-sender" class="text-[10px] font-black opacity-90 uppercase tracking-widest">Incoming from: ...</div>
+        </div>
+    </div>
 
-    <nav class="sidebar flex flex-col shadow-xl">
-        <div class="p-6 border-b border-slate-700 text-center">
-            <h2 id="ui-main-title" class="text-md font-bold text-blue-400 leading-tight">Feedback Technology
-                Japan<br>製造工作排程系統</h2>
-            <p id="ui-sub-title" class="text-[10px] text-slate-400 mt-1 uppercase tracking-widest text-center">Arao
-                Factory Management</p>
-            <div id="cloud-status" class="text-xs text-emerald-400 mt-2 font-bold h-4"></div>
-        </div>
-        <div class="px-4 py-2 border-b border-slate-700 bg-slate-800/50">
-            <label id="ui-lbl-user" class="text-[9px] text-slate-500 uppercase font-bold">使用者姓名 Setup</label>
-            <input type="text" id="user-name"
-                class="w-full bg-slate-700 text-white text-xs p-1 rounded border border-slate-600 outline-none focus:border-blue-500 transition-all"
-                placeholder="請輸入姓名" oninput="saveUserName()">
-        </div>
-        <ul class="flex-1 mt-4">
-            <li><button onclick="navTo('edit')" class="nav-btn w-full text-left p-4 hover:bg-slate-700"
-                    id="btn-edit">📅 <span id="ui-nav-edit">編輯週報/日報</span></button></li>
-            <li><button onclick="navTo('history')" class="nav-btn w-full text-left p-4 hover:bg-slate-700 active-nav"
-                    id="btn-history">📚 <span id="ui-nav-history">歷史紀錄庫</span></button></li>
-            <li><button onclick="navTo('daily')" class="nav-btn w-full text-left p-4 hover:bg-slate-700"
-                    id="btn-daily">☀️ <span id="ui-nav-daily">查詢每日工作</span></button></li>
-        </ul>
-        <div class="p-4 border-t border-slate-700 space-y-2">
-            <div class="mb-2">
-                <button onclick="syncFromCloud(true)"
-                    class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded text-sm font-bold shadow-md transition">🔄
-                    <span id="ui-btn-force-sync">強制更新雲端同步</span></button>
+    <!-- Name Modal -->
+    <div id="name-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl space-y-8 border border-slate-100">
+            <div class="text-center space-y-2">
+                <div class="text-6xl mb-4">👤</div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">歡迎進入聊天室</h2>
+                <h3 class="text-sm font-bold text-blue-500 italic uppercase tracking-widest leading-tight italic">Welcome to the Chat</h3>
             </div>
-            <button onclick="doExport()"
-                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-sm font-bold shadow-md transition">📊
-                <span id="ui-btn-export">匯出完整 Excel</span></button>
-            <button onclick="toggleLang()"
-                class="w-full bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded border border-slate-500 transition font-bold">🌐
-                中文 / 日本語 切換</button>
-            <button id="ui-btn-clear" onclick="clearAllData()"
-                class="w-full text-[9px] text-slate-600 mt-2 hover:text-red-400 transition underline">清除本機所有快取資料</button>
-            <div class="text-[10px] text-slate-500 text-center italic mt-2">v4.0 Cloud | 蔡秉哲 開發</div>
+            <div class="space-y-4">
+                <input type="text" id="modal-user-name" placeholder="您的名字 / お名前" 
+                    class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-5 text-lg font-bold outline-none focus:border-blue-500 transition-all text-slate-700"
+                    onkeydown="if(event.key==='Enter') saveNameFromModal()">
+                <button onclick="saveNameFromModal()" 
+                    class="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all">
+                    進入對話 / 参加する
+                </button>
+            </div>
         </div>
-    </nav>
+    </div>
 
-    <main class="main-content">
-        <section id="section-edit" class="content-section hidden">
-            <div id="readonly-banner"
-                class="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl mb-6 flex items-center gap-3 hidden">
-                <span class="text-xl">⚠️</span>
+    <div id="main-frame" class="w-full max-w-6xl h-full flex flex-col glass-panel rounded-[3rem] overflow-hidden relative border border-white/60">
+        <!-- Header -->
+        <header class="p-4 lg:p-8 border-b border-slate-100 flex justify-between items-center bg-white/40">
+            <div class="flex items-center gap-5">
+                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-xl ring-4 ring-blue-50">🌍</div>
                 <div>
-                    <div class="font-bold text-sm" id="ui-readonly-title">唯讀模式 (Read-only)</div>
-                    <div class="text-xs" id="ui-readonly-msg">目前已有其他使用者正在編輯此報表...</div>
-                </div>
-            </div>
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-4">
-                    <h1 id="ui-edit-title" class="text-2xl font-bold text-slate-800">報表編輯</h1>
-                    <div id="presence-msg"
-                        class="text-xs font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full border border-orange-200 hidden animate-pulse">
-                    </div>
-                    <div class="flex bg-slate-200 rounded-lg p-1 shadow-inner">
-                        <button id="dept-mfg" onclick="changeDept('mfg')"
-                            class="px-4 py-1 rounded-md text-sm dept-active">製造 (Mfg)</button>
-                        <button id="dept-qa" onclick="changeDept('qa')"
-                            class="px-4 py-1 rounded-md text-sm text-slate-600 font-bold" style="display: none;">品保
-                            (QA)</button>
+                    <h1 class="text-xl font-black text-slate-800 tracking-tighter">雙向翻譯聊天室 <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[10px] ml-1 uppercase">v2.1 PRO</span></h1>
+                    <div class="flex items-center gap-3 mt-1">
+                        <div class="flex items-center text-[10px] font-bold text-slate-400">
+                            <div class="online-dot animate-pulse"></div>
+                            線上人員 / 接続中：<span id="online-list" class="text-emerald-500 ml-1">...</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="resetEdit()"
-                        class="bg-white border px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-slate-50">🆕
-                        <span id="ui-btn-new">建立新週報</span></button>
-                    <button onclick="doSave()"
-                        class="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition">💾
-                        <span id="ui-btn-save">儲存</span></button>
-                </div>
             </div>
+            <div class="flex items-center gap-4 text-right">
+                <div class="hidden sm:block">
+                    <div id="display-user-name" class="text-sm font-black text-blue-600 uppercase">...</div>
+                    <button onclick="promptNameChange()" class="text-[10px] font-bold text-slate-400 hover:text-blue-500 underline uppercase tracking-tighter">Modify / 変更</button>
+                </div>
+                <button onclick="clearChat()" class="p-3 bg-red-50 text-red-300 hover:text-red-500 rounded-2xl transition-all shadow-sm">🗑️</button>
+            </div>
+        </header>
 
-            <div
-                class="bg-white p-6 rounded-xl shadow-sm mb-6 border border-slate-200 grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div class="lg:col-span-4 border-r border-slate-50 pr-4">
-                    <label id="ui-lbl-date" class="block text-sm font-bold text-slate-600 mb-2 font-bold">日期區間 (Start -
-                        End)</label>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <input type="date" id="dateS"
-                            class="border p-2 rounded-lg flex-grow shadow-sm outline-none focus:border-blue-500"
-                            onchange="checkConflict(); dirty()">
-                        <span class="text-gray-400">~</span>
-                        <input type="date" id="dateE"
-                            class="border p-2 rounded-lg flex-grow shadow-sm outline-none focus:border-blue-500"
-                            onchange="checkConflict(); dirty()">
-                    </div>
-                </div>
-                <div class="lg:col-span-8">
-                    <label id="ui-lbl-summary" class="block text-sm font-bold text-slate-600 mb-2">本週摘要 (Enter
-                        自動編號)</label>
-                    <textarea id="summary-zh" placeholder="1. " onkeydown="handleAutoNumber(event)"
-                        oninput="debouncedTrans(this, 'summary-ja')"></textarea>
-                    <div id="summary-ja" class="translation-box italic text-blue-700">Translation...</div>
-                </div>
-            </div>
+        <!-- Chat Container -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 lg:p-10 space-y-6 scrollbar-hide bg-gradient-to-b from-white to-slate-50/30">
+            <!-- Messages go here -->
+        </div>
 
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
-                <table class="w-full text-left">
-                    <thead class="bg-slate-50 border-b">
-                        <tr>
-                            <th id="ui-th-date" class="p-4 font-bold text-slate-600 w-44 text-center border-r">日期</th>
-                            <th id="ui-th-name" class="p-4 font-bold text-slate-600 w-40 text-center border-r">人員</th>
-                            <th id="ui-th-task" class="p-4 font-bold text-slate-600 text-center border-r">排程內容</th>
-                            <th id="ui-th-action" class="p-4 font-bold text-slate-600 w-20 text-center">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
-                <button onclick="addRow()"
-                    class="w-full p-4 text-blue-600 hover:bg-blue-50 font-bold border-t transition text-center">+ <span
-                        id="ui-btn-add">新增排程項目</span></button>
+        <!-- Input Area -->
+        <section class="p-4 lg:p-8 bg-white border-t border-slate-100">
+            <div id="live-trans" class="mb-4 px-5 py-3 bg-slate-800 text-white rounded-2xl shadow-2xl text-xs font-bold hidden flex items-center gap-3">
+                <span class="bg-blue-600 px-2 py-0.5 rounded text-[9px] uppercase tracking-widest">Translate</span>
+                <span id="live-trans-text">...</span>
             </div>
-        </section>
-
-        <section id="section-history" class="content-section">
-            <div id="histList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </section>
-        <section id="section-daily" class="hidden content-section">
-            <div
-                class="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <h1 id="ui-daily-title" class="text-2xl font-bold text-slate-800">查詢每日工作</h1>
-                <div class="flex items-center gap-3 bg-blue-50 p-2 px-4 rounded-lg border border-blue-100">
-                    <label id="ui-lbl-select-date" for="dailyDate" class="text-sm font-bold text-blue-600 mb-0">📅
-                        請選擇查詢日期：</label>
-                    <input type="date" id="dailyDate"
-                        class="border-2 border-blue-300 p-2 rounded-lg shadow-sm focus:ring-4 focus:ring-blue-100 outline-none font-bold text-blue-800"
-                        onchange="renderDaily()">
-                </div>
+            <div class="flex gap-4 items-end bg-slate-50 rounded-[2rem] p-3 border border-slate-100 focus-within:ring-4 focus-within:ring-blue-50 transition-all">
+                <textarea id="msg-input" 
+                    class="flex-1 bg-transparent border-none outline-none p-3 text-base font-bold text-slate-700 resize-none max-h-32 min-h-[56px] placeholder:text-slate-300"
+                    placeholder="輸入後按 Enter 傳送 / 入力して送信..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
+                <button onclick="sendMessage()" id="send-btn"
+                    class="w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
             </div>
-            <div id="dailyContent" class="space-y-8"></div>
+            <p class="text-[9px] text-center text-slate-300 mt-5 font-bold uppercase tracking-[0.4em]">Optimized Real-time Sync Engine</p>
         </section>
-    </main>
+    </div>
 
     <script>
-        // ==========================================
-        // 🔥 雲端協作設定區 🔥
-        // 請將下方引號內的文字替換為您的 Google Apps Script 網址
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyCqkSEg2FfwdF4yFjZToMaRMbwpRu1P6z0E4uLLNzaxzyT_g4lPjI5RdqyIUn3Kqhy/exec";
-        // ==========================================
+        // 重返 V1 兼容的金鑰，確保 V1/V2 可以互相對話與提醒
+        const KEY_DATA = "FB_CHAT_DYN_v9_BADGE"; 
+        const PRES_PREFIX = "PRES_v2_";
+        
+        let messages = []; let isSending = false; let lastSyncHash = ""; let transTimer = null; let lastTrans = null;
+        let userName = localStorage.getItem('fb_user_v2') || localStorage.getItem('fb_user') || ""; 
+        let originalTitle = document.title; let flashTimer = null; let isTabActive = true;
 
-        let db = JSON.parse(localStorage.getItem('fb_arao_final_v32_db')) || {};
-        let currentDept = 'mfg', isChanged = false, currentLang = 'zh';
-        let userName = localStorage.getItem('fb_arao_user') || "";
-        let hbTimer = null, syncTimerId = null, currentEditId = null;
+        document.addEventListener("visibilitychange", () => { isTabActive = (document.visibilityState==='visible'); if(isTabActive) dismissAlert(); });
+        window.onfocus = () => { isTabActive = true; dismissAlert(); }; window.onblur = () => isTabActive = false;
 
-        document.getElementById('user-name').value = userName;
-        function saveUserName() {
-            const input = document.getElementById('user-name');
-            userName = input.value.trim();
-            localStorage.setItem('fb_arao_user', userName);
-            input.classList.remove('border-red-500', 'bg-red-50');
-            if (currentEditId) sendHeartbeat();
+        function updateFavicon(hasNew) {
+            const favicon = document.getElementById('favicon');
+            if (hasNew) {
+                favicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>🌍</text><circle cx=%2280%22 cy=%2220%22 r=%2225%22 fill=%22red%22 stroke=%22white%22 stroke-width=%225%22/></svg>";
+                if ('setAppBadge' in navigator) navigator.setAppBadge();
+            } else {
+                favicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>";
+                if ('clearAppBadge' in navigator) navigator.clearAppBadge();
+            }
         }
 
-        const i18n = {
-            zh: { mainTitle: "Feedback Technology Japan<br>製造工作排程系統", subTitle: "日本荒尾分工廠專用", navEdit: "編輯週報/日報", navHistory: "歷史紀錄庫", navDaily: "查詢每日工作", editTitle: "報表編輯", btnNew: "建立新週報", btnSave: "儲存", btnExport: "匯出完整 Excel", btnForceSync: "強制更新雲端同步", lblDate: "日期區間 (Start - End)", lblSummary: "本週摘要 (Enter 自動編號)", thDate: "日期", thName: "人員", thTask: "排程內容", thAction: "操作", btnAdd: "新增排程項目", historyTitle: "歷史紀錄庫", dailyTitle: "查詢每日工作", warn: "尚未儲存，確定要切換嗎？", saveOk: "雲端同步成功！最新資料已匯入本機。", lblUser: "使用者姓名 Setup", userWarn: "請先輸入您的姓名再進行編輯！", lockWarn: "⚠️ 禁止儲存！{user} 正在編輯此報表，請稍後再試。", outdatedWarn: "⚠️ 禁止儲存！雲端已有更新版本 ({time})，請先點擊左側「強制更新雲端同步」後再進行儲存。", presenceMsg: "⚠️ {user} 正在編輯此報表...", readonlyTitle: "唯讀模式 (Read-only)", readonlyMsg: "目前 {user} 正在編輯此報表，為了避免衝突，您現在只能檢視內容，無法進行修改或儲存。", readonlyAlert: "⚠️ 注意：{user} 正在編輯中，目前為唯讀模式。", unlockAlert: "🎉 {user} 已編輯完成並離開。\n頁面將自動更新至最新狀態，您可以開始您的編輯了。", lblSelectDate: "📅 請選擇查詢日期：", syncing: "🔄 正在與雲端同步...", syncDone: "☁️ 雲端同步完成 (Online)", saving: "⬆️ クラウドへ保存して同期中...", saveDone: "☁️ 雲端儲存與同步成功！", deletingSync: "🗑️ 正在同步刪除至雲端...", deleteDone: "☁️ 雲端紀錄已刪除", clearConfirm: "這將會永久刪除本機瀏覽器中的所有週報快取，確定嗎？ (不影響雲端與他人檔案)", clearDone: "已全部清除。", deleteConfirm: "確定要永久刪除此筆紀錄嗎？（若雲端連線正常，也會同步從雲端刪除）", syncFailedAlert: "⚠️ 連線失敗，無法同步最新資料。\nError: " },
-            ja: { mainTitle: "Feedback Technology Japan<br>製造スケジュール", subTitle: "日本荒尾分工場専用", navEdit: "週報/日報の編集", navHistory: "履歴ログ", navDaily: "毎日のスケジュールを確認する", editTitle: "レポート編集", btnNew: "新規作成", btnSave: "保存", btnExport: "Excel出力", btnForceSync: "クラウドと強制同期", lblDate: "日付期間 (Start - End)", lblSummary: "今週の概要 (自動番号)", thDate: "日付", thName: "担当者", thTask: "業務内容", thAction: "操作", btnAdd: "項目を追加", historyTitle: "履歴ログ", dailyTitle: "毎日のスケジュールを確認する", warn: "保存されていない変更があります。", saveOk: "クラウドと同期しました！", lblUser: "使用者の名前 Setup", userWarn: "編輯する前に、お名前を入力してください！", lockWarn: "⚠️ 保存は禁止されています！{user} がこのレポートを編輯しています。後でもう一度お試しください。", outdatedWarn: "⚠️ 保存は禁止されています！クラウドに新的版本 ({time}) があります。保存する前に「クラウドと強制同期」をクリックしてください。", presenceMsg: "⚠️ {user} がこのレポートを編輯しています...", readonlyTitle: "読み取り専用モード (Read-only)", readonlyMsg: "現在 {user} が這個レポートを編輯しています。衝突を避けるため、現在は表示のみ可能で、編輯や保存はできません。", readonlyAlert: "⚠️ 注意：{user} が編輯中のため、現在は読み取り専用モードです。", unlockAlert: "🎉 {user} が編輯を終了しました。\n最新の數據に更新され、編輯が可能になります。", lblSelectDate: "📅 検索日の選択：", syncing: "🔄 クラウドと同期しています...", syncDone: "☁️ クラウド同期完了 (Online)", saving: "⬆️ クラウドへ保存して同期中...", saveDone: "☁️ クラウドの保存と同期が完了しました！", deletingSync: "🗑️ クラウドへ削除を同期しています...", deleteDone: "☁️ クラウドの記録が削除されました", clearConfirm: "ローカルブラウザのすべての週報キャッシュを完全に削除します。よろしいですか？（クラウドや他のユーザーのファイルには影響しません）", clearDone: "すべてクリアされました。", deleteConfirm: "この記録を完全に削除してもよろしいですか？（クラウド接続が正常な場合、クラウドからも同期して削除されます）", syncFailedAlert: "⚠️ 接続に失敗したため、最新データを同期できません。\nError: " }
-        };
-
-        async function syncFromCloud(force = false) {
-            if (GAS_URL.includes("在此貼上") || GAS_URL.trim() === "") {
-                document.getElementById('cloud-status').innerText = "⚠️ 未設定雲端連線，目前為本機離線模式";
-                if (force) alert("⚠️ 未設定雲端連線網址！");
-                return;
+        function triggerAlert(sender) {
+            if (isTabActive) return;
+            updateFavicon(true);
+            if (!flashTimer) {
+                let show = true; 
+                flashTimer = setInterval(() => { 
+                    document.title = show ? "►►► 🔔 新訊息 ◄◄◄" : originalTitle; 
+                    show = !show; 
+                }, 600);
             }
-            try {
-                document.getElementById('cloud-status').innerText = i18n[currentLang].syncing;
-                const res = await fetch(GAS_URL);
-                const cloudDb = await res.json();
-                if (cloudDb && Object.keys(cloudDb).length > 0) {
-                    db = { ...db, ...cloudDb };
-                    localStorage.setItem('fb_arao_final_v32_db', JSON.stringify(db));
+            document.body.classList.add('flash-active');
+            document.getElementById('alert-sender').innerText = `SEND BY: ${sender}`;
+            document.getElementById('super-alert').classList.add('active');
+        }
+
+        function dismissAlert() {
+            clearInterval(flashTimer); flashTimer = null; document.title = originalTitle;
+            document.body.classList.remove('flash-active');
+            document.getElementById('super-alert').classList.remove('active');
+            updateFavicon(false);
+        }
+
+        if (!userName) document.getElementById('name-modal').classList.remove('hidden'); else document.getElementById('display-user-name').innerText = userName;
+
+        async function translate(text) {
+            if (!text) return ""; const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(text); const sl = isJp ? 'ja' : 'zh-TW'; const tl = isJp ? 'zh-TW' : 'ja';
+            try { 
+                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}&t=${Date.now()}`); 
+                const json = await res.json(); 
+                return { result: json[0].map(p => p[0]).join(''), origin: text }; 
+            } catch (e) { return { result: "...", origin: text }; }
+        }
+
+        function handleInput() {
+            const el = document.getElementById('msg-input');
+            const live = document.getElementById('live-trans');
+            const liveText = document.getElementById('live-trans-text');
+            const text = el.value.trim();
+            if (el.scrollHeight > el.clientHeight) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
+            if (!text) { live.classList.add('hidden'); lastTrans = null; return; }
+            clearTimeout(transTimer); transTimer = setTimeout(async () => {
+                if (el.value.trim() === text) { const t = await translate(text); lastTrans = t; liveText.innerText = t.result; live.classList.remove('hidden'); }
+            }, 250);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('msg-input'); const text = input.value.trim(); if (!text || isSending) return; isSending = true;
+            document.getElementById('live-trans').classList.add('hidden');
+            let t = (lastTrans && lastTrans.origin === text) ? lastTrans : await translate(text);
+            const msg = { user: userName, text: text, trans: t.result, time: Date.now() };
+            const updated = [...messages, msg].slice(-100);
+            updateUI(updated, false); input.value = ""; input.style.height = "auto"; isSending = false; lastTrans = null;
+            postData(KEY_DATA, updated);
+        }
+
+        function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+        function updateUI(newList, playAlert = true) {
+            const last = newList[newList.length - 1]; const current = messages[messages.length - 1]; const isNew = last && (!current || last.time > current.time);
+            if (JSON.stringify(newList) === lastSyncHash) return;
+            lastSyncHash = JSON.stringify(newList);
+            if (playAlert && isNew && last.user !== userName) triggerAlert(last.user);
+            messages = newList;
+            const container = document.getElementById('chat-messages'); container.innerHTML = "";
+            let lastDate = "";
+            messages.forEach(m => {
+                const dateStr = new Date(m.time).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                if (dateStr !== lastDate) {
+                    const div = document.createElement('div'); div.className = "date-divider text-center"; div.innerHTML = `<span>${dateStr}</span>`;
+                    container.appendChild(div); lastDate = dateStr;
                 }
-                document.getElementById('cloud-status').innerText = i18n[currentLang].syncDone;
-                setTimeout(() => document.getElementById('cloud-status').innerText = "", 5000);
-
-                const hList = document.getElementById('section-history');
-                const dList = document.getElementById('section-daily');
-                if (hList && !hList.classList.contains('hidden')) renderHistory();
-                if (dList && !dList.classList.contains('hidden')) renderDaily();
-
-                if (force === true) {
-                    alert("✅ 已成功從雲端更新最新資料！");
-                    if (currentEditId && !document.getElementById('section-edit').classList.contains('hidden')) {
-                        loadRecord(currentEditId);
-                    }
-                }
-                updatePresenceUI();
-                scheduleNextSync(); // 排程下一次隨機同步
-            } catch (e) {
-                console.error(e);
-                document.getElementById('cloud-status').innerHTML = "<span class='text-red-400'>⚠️ 雲端連線失敗</span>";
-                if (force === true) alert(i18n[currentLang].syncFailedAlert + e.message);
-            }
-        }
-
-        // 啟動時自動同步
-        window.addEventListener('load', () => syncFromCloud(false));
-
-        function handleAutoNumber(e) {
-            isChanged = true;
-            if (e.key === 'Enter') {
-                const el = e.target;
-                const pos = el.selectionStart;
-                const lines = el.value.substring(0, pos).split('\n');
-                const lastLine = lines[lines.length - 1];
-                const match = lastLine.match(/^(\d+)([\.\、\s]+)/);
-                if (match) {
-                    e.preventDefault();
-                    const nextNum = parseInt(match[1]) + 1;
-                    const ins = "\n" + nextNum + match[2];
-                    el.value = el.value.substring(0, pos) + ins + el.value.substring(pos);
-                    el.selectionStart = el.selectionEnd = pos + ins.length;
-                }
-            }
-        }
-
-        const debounce = (fn, ms) => {
-            let t;
-            return (...args) => {
-                clearTimeout(t);
-                t = setTimeout(() => fn.apply(this, args), ms);
-            };
-        };
-        const debouncedTrans = debounce(trans, 800);
-
-        async function trans(el, tid) {
-            const txt = el.value.trim();
-            const target = document.getElementById(tid);
-            if (!txt) {
-                target.innerText = "...";
-                return;
-            }
-
-            // 按行拆分，獨立翻譯以強化中日文混合識別 (避免整塊文字被误判為單一語種)
-            const lines = txt.split('\n');
-            target.innerText = "...";
-            try {
-                const results = await Promise.all(lines.map(async (line) => {
-                    if (!line.trim()) return "";
-                    // 偵測單行語言：含有日文假名則設為來源 ja (翻成中文)，否則設為 zh-TW (翻成日文)
-                    const isLineJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(line);
-                    const sl = isLineJp ? 'ja' : 'zh-TW';
-                    const tl = isLineJp ? 'zh-TW' : 'ja';
-                    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(line)}`);
-                    const json = await res.json();
-                    return json[0].map(p => p[0]).join('');
-                }));
-                target.innerText = results.join('\n');
-            } catch (e) {
-                console.error(e);
-                target.innerText = "Error";
-            }
-        }
-
-        function toggleLang() {
-            currentLang = (currentLang === 'zh') ? 'ja' : 'zh';
-            const L = i18n[currentLang];
-            document.getElementById('ui-main-title').innerHTML = L.mainTitle;
-            document.getElementById('ui-sub-title').innerText = L.subTitle;
-            document.getElementById('ui-nav-edit').innerText = L.navEdit;
-            document.getElementById('ui-nav-history').innerText = L.navHistory;
-            document.getElementById('ui-nav-daily').innerText = L.navDaily;
-            document.getElementById('ui-edit-title').innerText = L.editTitle;
-            document.getElementById('ui-btn-new').innerText = L.btnNew;
-            document.getElementById('ui-btn-save').innerText = L.btnSave;
-            document.getElementById('ui-btn-export').innerText = L.btnExport;
-            if (document.getElementById('ui-btn-force-sync')) document.getElementById('ui-btn-force-sync').innerText = L.btnForceSync;
-            document.getElementById('ui-lbl-date').innerText = L.lblDate;
-            document.getElementById('ui-lbl-summary').innerText = L.lblSummary;
-            document.getElementById('ui-th-date').innerText = L.thDate;
-            document.getElementById('ui-th-name').innerText = L.thName;
-            document.getElementById('ui-th-task').innerText = L.thTask;
-            document.getElementById('ui-th-action').innerText = L.thAction;
-            document.getElementById('ui-btn-add').innerText = L.btnAdd;
-            if (document.getElementById('ui-history-title')) document.getElementById('ui-history-title').innerText = L.historyTitle;
-            if (document.getElementById('ui-daily-title')) document.getElementById('ui-daily-title').innerText = L.dailyTitle;
-            if (document.getElementById('ui-lbl-user')) document.getElementById('ui-lbl-user').innerText = L.lblUser;
-            if (document.getElementById('ui-readonly-title')) document.getElementById('ui-readonly-title').innerText = L.readonlyTitle;
-            if (document.getElementById('ui-lbl-select-date')) document.getElementById('ui-lbl-select-date').innerText = L.lblSelectDate;
-        }
-
-        let lastLockUser = "";
-        function setEditorReadOnly(ro, lockingUser = "") {
-            if (lockingUser) lastLockUser = lockingUser;
-            const section = document.getElementById('section-edit');
-            const inputs = section.querySelectorAll('input, textarea, button:not(#btn-new)');
-            inputs.forEach(el => {
-                if (el.id === 'dept-mfg' || el.id === 'dept-qa') return;
-                el.disabled = ro;
-                if (ro) el.classList.add('opacity-50', 'cursor-not-allowed');
-                else el.classList.remove('opacity-50', 'cursor-not-allowed');
+                const isMe = m.user === userName;
+                const bubble = document.createElement('div'); bubble.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+                bubble.innerHTML = `<div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}"><div class="flex items-center gap-2 mb-1 px-3"><span class="text-[9px] font-black text-slate-400 tracking-tight uppercase">${m.user}</span><span class="text-[8px] text-slate-300">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div><div class="p-4 rounded-3xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500 shadow-blue-100/50' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}"><div class="text-sm font-semibold tracking-tight whitespace-pre-wrap">${m.text}</div><div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-50 text-blue-600'}"><div class="text-[11px] font-bold italic opacity-90">${m.trans}</div></div></div></div>`;
+                container.appendChild(bubble);
             });
-            const banner = document.getElementById('readonly-banner');
-            if (ro) {
-                banner.classList.remove('hidden');
-                document.getElementById('ui-readonly-msg').innerText = i18n[currentLang].readonlyMsg.replace('{user}', lockingUser);
-            } else {
-                banner.classList.add('hidden');
-            }
+            container.scrollTop = container.scrollHeight;
         }
 
-        let myJoinedAt = null;
-        async function sendHeartbeat() {
-            if (!userName || !currentEditId || GAS_URL.includes("在此貼上")) return;
-            if (!myJoinedAt) myJoinedAt = Date.now();
+        async function sync() {
             try {
-                fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        id: `presence_${currentEditId}_${userName}`,
-                        data: { user: userName, joinedAt: myJoinedAt, time: Date.now() }
-                    }),
-                    headers: { "Content-Type": "text/plain;charset=utf-8" }
-                });
-            } catch (e) { }
-        }
-
-        async function releaseLock(id) {
-            if (!id || !GAS_URL || GAS_URL.includes("在此貼上")) return;
-            try {
-                // 發送空資料立刻釋放自己的雲端佔位
-                fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ id: `presence_${id}_${userName}`, data: { user: "", time: 0 } }),
-                    headers: { "Content-Type": "text/plain;charset=utf-8" }
-                });
-            } catch (e) { }
-            myJoinedAt = null; // 清除自己的加入時間
-        }
-
-        function updatePresenceUI() {
-            const msg = document.getElementById('presence-msg');
-            const banner = document.getElementById('readonly-banner');
-            if (!currentEditId || !msg) return;
-
-            const wasReadOnly = !banner.classList.contains('hidden');
-
-            // 找出所有關於此報表的活躍成員
-            const prefix = `presence_${currentEditId}_`;
-            const members = Object.keys(db)
-                .filter(k => k.startsWith(prefix))
-                .map(k => db[k])
-                .filter(m => m && m.user && (Date.now() - m.time < 60000))
-                .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
-
-            if (members.length > 0) {
-                const editor = members[0]; // 最早進場的人是編輯者
-                if (editor.user !== userName) {
-                    // 我不是最優先的
-                    msg.innerText = i18n[currentLang].presenceMsg.replace('{user}', editor.user);
-                    msg.classList.remove('hidden');
-                    if (!wasReadOnly) setEditorReadOnly(true, editor.user);
-                } else {
-                    // 我是最優先的 (或是只有我一個)
-                    msg.classList.add('hidden');
-                    if (wasReadOnly) {
-                        setEditorReadOnly(false);
-                        alert(i18n[currentLang].unlockAlert.replace('{user}', lastLockUser));
-                        loadRecord(currentEditId, false);
-                    }
-                }
-            } else {
-                msg.classList.add('hidden');
-                if (wasReadOnly) setEditorReadOnly(false);
-            }
-        }
-
-        function scheduleNextSync() {
-            if (!syncTimerId && !document.getElementById('section-edit').classList.contains('hidden')) {
-                const delay = 15000 + Math.random() * 10000; // 15s~25s 隨機抖動
-                syncTimerId = setTimeout(async () => {
-                    syncTimerId = null;
-                    await syncFromCloud();
-                }, delay);
-            }
-        }
-
-        function stopSyncTimer() {
-            if (syncTimerId) {
-                clearTimeout(syncTimerId);
-                syncTimerId = null;
-            }
-        }
-
-        async function checkConflict() {
-            const s = document.getElementById('dateS').value, e = document.getElementById('dateE').value;
-            if (!s || !e) return;
-            currentEditId = `${currentDept}_${s}_${e}`;
-            await syncFromCloud(); // 立即同步檢查
-        }
-
-        async function doSave() {
-            const s = document.getElementById('dateS').value, e = document.getElementById('dateE').value;
-            if (!s || !e) return alert("Select Dates!");
-            const id = `${currentDept}_${s}_${e}`;
-
-            // 嚴格衝突與權限檢測
-            if (!GAS_URL.includes("在此貼上") && GAS_URL.trim() !== "") {
-                try {
-                    const res = await fetch(GAS_URL);
-                    const cloud = await res.json();
-
-                    // 1. 檢查是否有人正在編輯
-                    const p = cloud['presence_' + currentEditId];
-                    if (p && p.user !== userName && (Date.now() - p.time < 60000)) {
-                        return alert(i18n[currentLang].lockWarn.replace('{user}', p.user));
-                    }
-
-                    // 2. 檢查版本衝突
-                    if (cloud[id] && db[id] && cloud[id].updated !== db[id].updated) {
-                        return alert(i18n[currentLang].outdatedWarn.replace('{time}', cloud[id].updated));
-                    }
-                } catch (e) {
-                    console.error("Conflict check failed:", e);
-                }
-            }
-
-            const items = [];
-            document.querySelectorAll('#tableBody tr').forEach(tr => {
-                items.push({ date: tr.querySelector('.item-date').value, name: tr.querySelector('.item-name').value, zh: tr.querySelector('.item-zh').value, ja: tr.querySelector('.translation-box').innerText });
-            });
-            const newData = { dept: currentDept, s, e, summary: document.getElementById('summary-zh').value, summaryJa: document.getElementById('summary-ja').innerText, items, updated: new Date().toLocaleString() };
-
-            // 先存入本機
-            db[id] = newData;
-
-            if (!GAS_URL.includes("在此貼上") && GAS_URL.trim() !== "") {
-                try {
-                    document.getElementById('cloud-status').innerText = i18n[currentLang].saving;
-                    const res = await fetch(GAS_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({ id: id, data: newData }),
-                        headers: { "Content-Type": "text/plain;charset=utf-8" }
-                    });
-                    const result = await res.json();
-                    if (result.status === "success" && result.db) {
-                        // 修正：以本機資料為底，融入雲端的全局資料。避免離線時編輯未上傳的其他紀錄被雲端覆蓋洗掉！
-                        db = { ...db, ...result.db };
-                        document.getElementById('cloud-status').innerText = i18n[currentLang].saveDone;
-                        setTimeout(() => document.getElementById('cloud-status').innerText = "", 3000);
-                        alert(i18n[currentLang].saveOk);
-                        isChanged = false; // 標記為未修改，避免 navTo 彈出警告
-                        navTo('history');  // 自動導回歷史紀錄庫
-                    }
-                } catch (e) {
-                    console.error(e);
-                    alert("⚠️ 雲端儲存失敗，已暫時轉存於本機記憶體。如果網路恢復，重整後會更新。");
-                }
-            } else {
-                alert("💡 若要啟用無縫多人協作，請參閱設定指南填寫雲端網址，目前資料僅存於本機。");
-                isChanged = false; // 標記為未修改
-                navTo('history');  // 自動導回歷史紀錄庫
-            }
-
-            localStorage.setItem('fb_arao_final_v32_db', JSON.stringify(db));
-            isChanged = false;
-        }
-
-        function doExport() {
-            const wb = XLSX.utils.book_new();
-            const borderStyle = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
-            Object.values(db).forEach(r => {
-                if (r.deleted || !r.dept) return;
-                const sn = `${r.s}~${r.e}(${r.dept === 'mfg' ? '製造' : '品保'})`.substring(0, 31);
-                const rawData = [["日期", "人員", "內容(中)", "內容(日)"]];
-                r.items.forEach(i => rawData.push([i.date, i.name, i.zh, i.ja]));
-                const ws = XLSX.utils.aoa_to_sheet(rawData);
-                ws['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 55 }, { wch: 55 }];
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                for (let row = range.s.r; row <= range.e.r; row++) {
-                    for (let col = range.s.c; col <= range.e.c; col++) {
-                        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-                        if (!ws[cellRef]) continue;
-                        ws[cellRef].s = {
-                            alignment: { vertical: "center", horizontal: (col < 2) ? "center" : "left", wrapText: true },
-                            border: borderStyle, font: { name: "新細明體", sz: 11 }
-                        };
-                        if (row === 0) {
-                            ws[cellRef].s.font.bold = true;
-                            ws[cellRef].s.fill = { fgColor: { rgb: "F2F2F2" } };
-                            ws[cellRef].s.alignment.horizontal = "center";
+                // 加入時間戳記避免 GitHub Pages 或手機瀏覽器快取舊資料
+                const res = await fetch(`${GAS_URL}?t=${Date.now()}`); 
+                const cloud = await res.json();
+                if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
+                const now = Date.now(); const onlineUsers = []; const uniqueUsers = new Set();
+                Object.keys(cloud).forEach(k => {
+                    if (k.startsWith(PRES_PREFIX)) {
+                        if (now - cloud[k] < 30000) {
+                            const name = k.replace(PRES_PREFIX, "");
+                            if (!uniqueUsers.has(name)) { uniqueUsers.add(name); onlineUsers.push(name); }
                         }
                     }
-                }
-                XLSX.utils.book_append_sheet(wb, ws, sn);
-            });
-            XLSX.writeFile(wb, "Arao_Report.xlsx");
-        }
-
-        function clearAllData() {
-            if (confirm(i18n[currentLang].clearConfirm)) {
-                db = {};
-                localStorage.removeItem('fb_arao_final_v32_db');
-                alert(i18n[currentLang].clearDone);
-                location.reload();
-            }
-        }
-
-        function renderDaily() {
-            const date = document.getElementById('dailyDate').value;
-            const content = document.getElementById('dailyContent');
-            if (!date) return; content.innerHTML = '';
-            ['mfg'].forEach(dept => {
-                const name = dept === 'mfg' ? '製造 (Manufacturing)' : '品保 (QA)';
-                let html = `<div class="bg-white rounded-xl shadow p-6 border-t-8 ${dept === 'mfg' ? 'border-blue-600' : 'border-purple-600'}">`;
-                html += `<h2 class="text-xl font-black text-slate-800 mb-4">${name}</h2>`;
-                let found = false;
-                Object.values(db).filter(r => r.dept === dept && !r.deleted).forEach(r => {
-                    const todayItems = r.items.filter(i => i.date === date);
-                    if (todayItems.length > 0) {
-                        found = true;
-                        html += `<div class="mb-4 bg-slate-50 p-4 rounded border font-bold text-xs text-slate-400 flex justify-between items-center">
-                                    <span>來源期別: ${r.s} ~ ${r.e}</span>
-                                    <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-[10px]">Cloud Sync OK</span>
-                                 </div>`;
-
-                        if (r.summary) {
-                            html += `<div class="mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                                        <div class="text-xs font-bold text-amber-600 mb-1 uppercase tracking-wider">🚩 本週摘要 (Weekly Summary)</div>
-                                        <div class="text-slate-800 font-bold whitespace-pre-wrap">${r.summary}</div>
-                                        <div class="mt-2 text-amber-700 italic text-sm p-2 bg-white/50 rounded border border-amber-100 whitespace-pre-wrap">${r.summaryJa || ''}</div>
-                                     </div>`;
-                        }
-
-                        todayItems.forEach(item => {
-                            html += `<div class="mb-6"><div class="font-bold text-blue-800 text-lg border-b pb-1">👤 ${item.name}</div><div class="text-slate-700 whitespace-pre-wrap mt-2 font-bold">${item.zh}</div><div class="mt-2 text-blue-500 italic text-sm p-2 bg-blue-50 rounded whitespace-pre-wrap">${item.ja}</div></div>`;
-                        });
-                    }
                 });
-                if (!found) html += `<p class="text-slate-300 italic text-center py-10">NO DATA / 記錄なし</p>`;
-                content.innerHTML += html + `</div>`;
-            });
+                onlineUsers.sort();
+                document.getElementById('online-list').innerText = onlineUsers.length > 0 ? onlineUsers.join(', ') : '無人';
+            } catch (e) { console.error(e); }
         }
 
-        function addRow(data = { date: '', name: '', zh: '', ja: '' }) {
-            const tbody = document.getElementById('tableBody');
-            const rid = 'r' + Math.random().toString(36).substr(2, 5);
-            const tr = document.createElement('tr');
-            tr.className = "border-b hover:bg-slate-50 transition";
-            tr.innerHTML = `
-                <td class="p-3 align-top text-center border-r"><input type="date" class="w-full p-2 border rounded item-date text-sm" value="${data.date}" onchange="dirty()"></td>
-                <td class="p-3 align-top text-center border-r"><input type="text" class="w-full p-2 border rounded item-name text-sm text-center font-bold" value="${data.name}" placeholder="姓名"></td>
-                <td class="p-3 border-r">
-                    <textarea class="item-zh text-sm font-bold" onkeydown="handleAutoNumber(event)" oninput="debouncedTrans(this, '${rid}-t')">${data.zh}</textarea>
-                    <div id="${rid}-t" class="translation-box">${data.ja || '...'}</div>
-                </td>
-                <td class="p-3 text-center align-top"><button onclick="this.closest('tr').remove(); dirty();" class="text-red-400 font-bold mt-2">✕</button></td>
-            `;
-            tbody.appendChild(tr);
+        async function heartbeat() { if (userName) postData(PRES_PREFIX + userName, Date.now()); }
+        function postData(id, data) {
+            fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id, data }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
         }
 
-        async function navTo(id) {
-            const currentView = Array.from(document.querySelectorAll('.content-section')).find(s => !s.classList.contains('hidden'))?.id;
-            if (isChanged && !confirm(i18n[currentLang].warn)) return;
+        function saveNameFromModal() { const val = document.getElementById('modal-user-name').value.trim(); if (!val) return; userName = val; localStorage.setItem('fb_user_v2', userName); document.getElementById('display-user-name').innerText = userName; document.getElementById('name-modal').classList.add('hidden'); heartbeat(); }
+        function promptNameChange() { const newVal = prompt("新的姓名 / 新しい名前：", userName); if (newVal && newVal.trim()) { userName = newVal.trim(); localStorage.setItem('fb_user_v2', userName); document.getElementById('display-user-name').innerText = userName; updateUI(messages, false); heartbeat(); } }
+        function clearChat() { if (!confirm("清空歷史紀錄嗎？ / 履歴を削除しますか？")) return; postData(KEY_DATA, []); updateUI([]); }
 
-            // 如果離開編輯模式，主動釋放鎖定
-            if (currentView === 'section-edit' && id !== 'edit' && currentEditId) {
-                releaseLock(currentEditId);
-            }
-            if (id === 'edit' && !userName) {
-                const input = document.getElementById('user-name');
-                input.classList.add('border-red-500', 'bg-red-50');
-                input.focus();
-                return alert(i18n[currentLang].userWarn);
-            }
-            if (id === 'edit') setEditorReadOnly(false); // 預設解除，後面讀取紀錄會再檢查
-            document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
-            document.getElementById('section-' + id).classList.remove('hidden');
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-nav'));
-            document.getElementById('btn-' + id).classList.add('active-nav');
-
-            if (id === 'history') {
-                if (!GAS_URL.includes("在此貼上") && GAS_URL.trim() !== "") {
-                    document.getElementById('histList').innerHTML = "<p class='text-slate-400 text-center py-10 w-full'>🔄 從雲端獲取最新紀錄中...</p>";
-                    await syncFromCloud();
-                }
-                renderHistory();
-            } else if (id === 'daily') {
-                if (!GAS_URL.includes("在此貼上") && GAS_URL.trim() !== "") {
-                    await syncFromCloud();
-                }
-                const dateVal = document.getElementById('dailyDate') ? document.getElementById('dailyDate').value : '';
-                if (dateVal) renderDaily();
-            }
-
-            if (id === 'edit') {
-                const s = document.getElementById('dateS').value, e = document.getElementById('dateE').value;
-                currentEditId = (s && e) ? `${currentDept}_${s}_${e}` : null;
-                if (currentEditId) {
-                    sendHeartbeat();
-                    if (!hbTimer) hbTimer = setInterval(sendHeartbeat, 30000);
-                }
-                updatePresenceUI();
-                stopSyncTimer();
-                scheduleNextSync(); // 啟動背景隨機同步
-            } else {
-                currentEditId = null;
-                clearInterval(hbTimer); hbTimer = null;
-                stopSyncTimer(); // 停止同步
-                document.getElementById('presence-msg').classList.add('hidden');
-            }
-
-            isChanged = false;
-        }
-
-        function changeDept(dept) {
-            if (isChanged && !confirm(i18n[currentLang].warn)) return;
-            currentDept = dept;
-            document.getElementById('dept-mfg').className = (dept === 'mfg') ? 'px-4 py-1 rounded-md text-sm dept-active' : 'px-4 py-1 rounded-md text-sm text-slate-600 font-bold';
-            document.getElementById('dept-qa').className = (dept === 'qa') ? 'px-4 py-1 rounded-md text-sm dept-active' : 'px-4 py-1 rounded-md text-sm text-slate-600 font-bold';
-            resetEdit(false);
-        }
-
-        function renderHistory() {
-            const list = document.getElementById('histList'); list.innerHTML = '';
-            Object.keys(db).sort().reverse().forEach(id => {
-                const r = db[id];
-                if (r.deleted || !r.dept) return;
-                const card = document.createElement('div');
-                card.className = "relative bg-white p-5 rounded-xl border border-l-4 shadow-sm hover:shadow-md cursor-pointer " + (r.dept === 'mfg' ? 'border-l-blue-500' : 'border-l-purple-500');
-                card.innerHTML = `
-                    <div class="font-bold text-slate-800 pr-16">${r.dept.toUpperCase()} | ${r.s} ~ ${r.e}</div>
-                    <div class="text-[10px] text-slate-400 mt-1">${r.updated}</div>
-                    <p class="text-xs text-slate-500 mt-2 truncate italic">${r.summary.substring(0, 50)}</p>
-                    <button onclick="event.stopPropagation(); deleteRecord('${id}')" class="absolute top-4 right-4 bg-red-100 text-red-500 hover:bg-red-600 hover:text-white rounded px-2 py-1 font-bold text-xs transition z-10">🗑️ 刪除</button>
-                `;
-                card.onclick = () => { if (isChanged && !confirm(i18n[currentLang].warn)) return; loadRecord(id); };
-                list.appendChild(card);
-            });
-        }
-
-        async function deleteRecord(id) {
-            if (!confirm(i18n[currentLang].deleteConfirm)) return;
-            db[id] = { deleted: true };
-            localStorage.setItem('fb_arao_final_v32_db', JSON.stringify(db));
-
-            if (!GAS_URL.includes("在此貼上") && GAS_URL.trim() !== "") {
-                try {
-                    document.getElementById('cloud-status').innerText = i18n[currentLang].deletingSync;
-                    const res = await fetch(GAS_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({ id: id, data: { deleted: true } }),
-                        headers: { "Content-Type": "text/plain;charset=utf-8" }
-                    });
-                    const result = await res.json();
-                    if (result.status === "success" && result.db) {
-                        db = { ...db, ...result.db };
-                    }
-                    document.getElementById('cloud-status').innerText = i18n[currentLang].deleteDone;
-                    setTimeout(() => document.getElementById('cloud-status').innerText = "", 3000);
-                } catch (e) {
-                    console.error(e);
-                    alert("⚠️ 雲端連線失敗，目前僅於本機隱藏。");
-                }
-            }
-            renderHistory();
-        }
-
-        async function loadRecord(id, autoSync = true) {
-            if (!userName) {
-                const input = document.getElementById('user-name');
-                input.classList.add('border-red-500', 'bg-red-50');
-                input.focus();
-                return alert(i18n[currentLang].userWarn);
-            }
-
-            // 檢查鎖定 (FCFS 下，進場就同步取得名單)
-            if (autoSync) await syncFromCloud();
-            updatePresenceUI();
-
-            const banner = document.getElementById('readonly-banner');
-            if (!banner.classList.contains('hidden')) {
-                // 如果進場後發現自己不是第一順位，提示唯讀
-                alert(i18n[currentLang].readonlyAlert.replace('{user}', lastLockUser));
-            } else {
-                sendHeartbeat(); // 只有順利成為第一順位才發送
-            }
-
-            const r = db[id]; currentDept = r.dept;
-
-            // 修正：強制更新畫面上的「製造/品保」藍底按鈕，防止出現「點進 QA 紀錄，畫面上方卻亮著 MFG，導致使用者以為壞掉或是將新寫的內容又誤存回 QA」
-            document.getElementById('dept-mfg').className = (r.dept === 'mfg') ? 'px-4 py-1 rounded-md text-sm dept-active' : 'px-4 py-1 rounded-md text-sm text-slate-600 font-bold';
-            document.getElementById('dept-qa').className = (r.dept === 'qa') ? 'px-4 py-1 rounded-md text-sm dept-active' : 'px-4 py-1 rounded-md text-sm text-slate-600 font-bold';
-
-            document.getElementById('dateS').value = r.s; document.getElementById('dateE').value = r.e;
-            currentEditId = id;
-            if (!hbTimer) hbTimer = setInterval(sendHeartbeat, 30000);
-            sendHeartbeat();
-            updatePresenceUI();
-            document.getElementById('summary-zh').value = r.summary; document.getElementById('summary-ja').innerText = r.summaryJa;
-            const b = document.getElementById('tableBody'); b.innerHTML = '';
-            r.items.forEach(i => addRow(i)); navTo('edit'); isChanged = false;
-        }
-
-        function resetEdit(ask = true) {
-            if (ask && isChanged && !confirm(i18n[currentLang].warn)) return;
-            if (currentEditId) releaseLock(currentEditId); // 建立新週報前，釋放舊鎖定
-            document.getElementById('dateS').value = ''; document.getElementById('dateE').value = '';
-            document.getElementById('summary-zh').value = ''; document.getElementById('summary-ja').innerText = '...';
-            document.getElementById('tableBody').innerHTML = ''; addRow(); isChanged = false;
-            currentEditId = null; setEditorReadOnly(false);
-        }
-
-        function dirty() { isChanged = true; }
-        addRow();
-        window.onbeforeunload = function () { if (isChanged) return i18n[currentLang].warn; };
+        setInterval(sync, 4000); setInterval(heartbeat, 10000); sync(); heartbeat();
     </script>
 </body>
-
 </html>
