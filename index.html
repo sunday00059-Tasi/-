@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedback Chat V2 - 雙向翻譯 & 在線協作</title>
+    <title>Feedback Chat V3 PRO - 雙向翻譯 & 私聊</title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIumYpuaZguevsumit+i聊天室 V2IiwKICAic2hvcnRfbmFtZSI6ICLni6zoipLoob3oiYUiLAogICJzdGFydF91cmwiOiAiLi9pbmRleC5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjBmOWZmIiwKICAidGhlbWVfY29sb3IiOiAiIzNiODJmNiIKfQ==">
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIumYpuaZguevsumit+i聊天室 V3 PROIiwKICAic2hvcnRfbmFtZSI6ICLni6zoipLoob3oiYUiLAogICJzdGFydF91cmwiOiAiLi9pbmRleC5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjBmOWZmIiwKICAidGhlbWVfY29sb3IiOiAiIzNiODJmNiIKfQ==">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
             border: 1px solid rgba(255, 255, 255, 0.7);
             box-shadow: 0 15px 60px -15px rgba(0, 0, 0, 0.08);
         }
-        .message-bubble { max-width: 80%; animation: fadeIn 0.3s ease-out; }
+        .message-bubble { max-width: 85%; animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -33,13 +33,13 @@
         .flash-active { animation: ring-pulse 1s infinite alternate !important; }
         @keyframes ring-pulse { 
             from { box-shadow: inset 0 0 0px transparent; } 
-            to { box-shadow: inset 0 0 80px rgba(239, 68, 68, 0.6); } 
+            to { box-shadow: inset 0 0 80px rgba(59, 130, 246, 0.4); } 
         }
         
         #super-alert {
             position: fixed; top: -120px; left: 50%; transform: translateX(-50%);
-            background: #ef4444; color: white; padding: 18px 40px; border-radius: 9999px;
-            font-weight: 800; font-size: 1.15rem; box-shadow: 0 30px 60px rgba(239, 68, 68, 0.4);
+            background: #3b82f6; color: white; padding: 18px 40px; border-radius: 9999px;
+            font-weight: 800; font-size: 1.15rem; box-shadow: 0 30px 60px rgba(59, 130, 246, 0.4);
             z-index: 3000; transition: all 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
             display: flex; align-items: center; gap: 15px; cursor: pointer; border: 2px solid white;
         }
@@ -51,18 +51,65 @@
         .date-divider::before, .date-divider::after { content: ''; flex: 1; border-bottom: 1px solid #e2e8f0; }
         .date-divider span { padding: 0 1.5rem; letter-spacing: 0.1em; }
         .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-right: 6px; }
+        
+        /* Sidebar transition */
+        #sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-active { transform: translateX(0) !important; }
+        
+        .room-item.active { background: #eff6ff; color: #2563eb; border-right: 4px solid #2563eb; }
+        .room-item:hover:not(.active) { background: #f8fafc; }
+
+        .new-indicator { width: 6px; height: 6px; background: #ef4444; border-radius: 50%; display: inline-block; margin-left: 4px; }
     </style>
-    <!-- Dynamic Favicon Container -->
+    <!-- Dynamic Favicon -->
     <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
 </head>
-<body class="flex items-center justify-center p-2 lg:p-4">
+<body class="flex items-center justify-center p-0 lg:p-4 overflow-hidden">
+
+    <!-- Simple Overlay -->
+    <div id="overlay" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar (Rooms) -->
+    <aside id="sidebar" class="fixed left-0 top-0 bottom-0 w-72 bg-white z-50 border-r border-slate-100 -translate-x-full shadow-2xl flex flex-col">
+        <div class="p-8 border-b border-slate-50">
+            <h2 class="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <span>💬</span> 頻道清單
+            </h2>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Rooms & DMs</p>
+        </div>
+        <div class="flex-1 overflow-y-auto py-4 scrollbar-hide">
+            <div onclick="switchRoom('ALL')" id="room-ALL" class="room-item p-5 flex items-center gap-4 cursor-pointer transition-all active active font-bold">
+                <span class="text-lg">🌍</span>
+                <div class="flex-1">
+                    <div class="text-sm">全體廣播 / 全員</div>
+                    <div id="last-msg-ALL" class="text-[10px] text-slate-400 font-medium truncate">...</div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4">
+                <h3 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">在線成員 / メンバー</h3>
+                <div id="dm-list" class="space-y-1">
+                    <!-- DM list items will be injected here -->
+                </div>
+            </div>
+        </div>
+        <div class="p-6 border-t border-slate-50 bg-slate-50/50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 text-lg font-bold" id="my-avatar">?</div>
+                <div>
+                    <div id="my-name" class="text-xs font-black text-slate-800 uppercase">...</div>
+                    <button onclick="promptNameChange()" class="text-[10px] font-bold text-blue-500 hover:underline">修改姓名 / 変更</button>
+                </div>
+            </div>
+        </div>
+    </aside>
 
     <!-- Alert Banner -->
     <div id="super-alert" onclick="dismissAlert()">
-        <span class="text-3xl animate-bounce">📢</span>
+        <span class="text-3xl animate-bounce">💬</span>
         <div class="text-left">
-            <div class="leading-tight">有新對話！ (新着)</div>
-            <div id="alert-sender" class="text-[10px] font-black opacity-90 uppercase tracking-widest">Incoming from: ...</div>
+            <div class="leading-tight">收到新私訊！ (新着)</div>
+            <div id="alert-sender" class="text-[10px] font-black opacity-90 uppercase tracking-widest">Incoming...</div>
         </div>
     </div>
 
@@ -72,7 +119,7 @@
             <div class="text-center space-y-2">
                 <div class="text-6xl mb-4">👤</div>
                 <h2 class="text-2xl font-black text-slate-800 tracking-tight">歡迎進入聊天室</h2>
-                <h3 class="text-sm font-bold text-blue-500 italic uppercase tracking-widest leading-tight italic">Welcome to the Chat</h3>
+                <h3 class="text-sm font-bold text-blue-500 italic uppercase tracking-widest leading-tight italic">Welcome to V3 PRO</h3>
             </div>
             <div class="space-y-4">
                 <input type="text" id="modal-user-name" placeholder="您的名字 / お名前" 
@@ -86,45 +133,46 @@
         </div>
     </div>
 
-    <div id="main-frame" class="w-full max-w-6xl h-full flex flex-col glass-panel rounded-[3rem] overflow-hidden relative border border-white/60">
+    <div id="main-frame" class="w-full max-w-6xl h-full flex flex-col glass-panel rounded-none lg:rounded-[3rem] overflow-hidden relative border border-white/60">
         <!-- Header -->
-        <header class="p-4 lg:p-8 border-b border-slate-100 flex justify-between items-center bg-white/40">
-            <div class="flex items-center gap-5">
-                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-xl ring-4 ring-blue-50">🌍</div>
+        <header class="p-5 lg:p-8 border-b border-slate-100 flex justify-between items-center bg-white/60">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="w-12 h-12 flex items-center justify-center bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all lg:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <div class="hidden lg:flex w-12 h-12 bg-blue-600 rounded-2xl items-center justify-center text-white text-2xl shadow-xl ring-4 ring-blue-50 cursor-pointer" onclick="toggleSidebar()">🌍</div>
                 <div>
-                    <h1 class="text-xl font-black text-slate-800 tracking-tighter">雙向翻譯聊天室 <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[10px] ml-1 uppercase">v2.1 PRO</span></h1>
-                    <div class="flex items-center gap-3 mt-1">
-                        <div class="flex items-center text-[10px] font-bold text-slate-400">
-                            <div class="online-dot animate-pulse"></div>
-                            線上人員 / 接続中：<span id="online-list" class="text-emerald-500 ml-1">...</span>
-                        </div>
+                    <h1 class="text-lg font-black text-slate-800 tracking-tighter flex items-center gap-2">
+                        <span id="active-room-title">全體廣播</span> 
+                        <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-[9px] uppercase font-black">V3 PRO</span>
+                    </h1>
+                    <div id="sync-status" class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5 flex items-center gap-1">
+                        <div class="online-dot w-1.5 h-1.5 grayscale opacity-50"></div> 讀取中...
                     </div>
                 </div>
             </div>
-            <div class="flex items-center gap-4 text-right">
-                <div class="hidden sm:block">
-                    <div id="display-user-name" class="text-sm font-black text-blue-600 uppercase">...</div>
-                    <button onclick="promptNameChange()" class="text-[10px] font-bold text-slate-400 hover:text-blue-500 underline uppercase tracking-tighter">Modify / 変更</button>
-                </div>
-                <button onclick="clearChat()" class="p-3 bg-red-50 text-red-300 hover:text-red-500 rounded-2xl transition-all shadow-sm">🗑️</button>
+            <div class="flex items-center gap-3">
+                <button onclick="clearChat()" title="清空紀錄" class="p-3 bg-red-50 text-red-200 hover:text-red-500 rounded-2xl transition-all">🗑️</button>
             </div>
         </header>
 
         <!-- Chat Container -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 lg:p-10 space-y-6 scrollbar-hide bg-gradient-to-b from-white to-slate-50/30">
-            <!-- Messages go here -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 lg:p-10 space-y-4 scrollbar-hide bg-gradient-to-b from-white to-slate-50/20">
+            <!-- Messages injected here -->
         </div>
 
         <!-- Input Area -->
-        <section class="p-4 lg:p-8 bg-white border-t border-slate-100">
-            <div id="live-trans" class="mb-4 px-5 py-3 bg-slate-800 text-white rounded-2xl shadow-2xl text-xs font-bold hidden flex items-center gap-3">
-                <span class="bg-blue-600 px-2 py-0.5 rounded text-[9px] uppercase tracking-widest">Translate</span>
+        <section class="p-4 lg:p-8 bg-white/90 border-t border-slate-100 backdrop-blur-md">
+            <div id="live-trans" class="mb-4 px-5 py-3 bg-slate-800 text-white rounded-2xl shadow-2xl text-xs font-bold hidden flex items-center gap-3 animate-fadeIn">
+                <span class="bg-blue-600 px-2 py-0.5 rounded text-[9px] uppercase tracking-widest">Preview</span>
                 <span id="live-trans-text">...</span>
             </div>
-            <div class="flex gap-4 items-end bg-slate-50 rounded-[2rem] p-3 border border-slate-100 focus-within:ring-4 focus-within:ring-blue-50 transition-all">
+            <div class="flex gap-4 items-end bg-slate-100/50 rounded-[2rem] p-3 border border-slate-100 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50 transition-all">
                 <textarea id="msg-input" 
                     class="flex-1 bg-transparent border-none outline-none p-3 text-base font-bold text-slate-700 resize-none max-h-32 min-h-[56px] placeholder:text-slate-300"
-                    placeholder="輸入後按 Enter 傳送 / 入力して送信..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
+                    placeholder="輸入後按 Enter 傳送訊息..." rows="1" onkeydown="handleKey(event)" oninput="handleInput()"></textarea>
                 <button onclick="sendMessage()" id="send-btn"
                     class="w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -132,41 +180,300 @@
                     </svg>
                 </button>
             </div>
-            <p class="text-[9px] text-center text-slate-300 mt-5 font-bold uppercase tracking-[0.4em]">Optimized Real-time Sync Engine</p>
+            <p class="text-[9px] text-center text-slate-300 mt-5 font-bold uppercase tracking-[0.4em]">Powered by Optimized V3 Sync Engine</p>
         </section>
     </div>
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyCqkSEg2FfwdF4yFjZToMaRMbwpRu1P6z0E4uLLNzaxzyT_g4lPjI5RdqyIUn3Kqhy/exec";
-        // 重返 V1 兼容的金鑰，確保 V1/V2 可以互相對話與提醒
-        const KEY_DATA = "FB_CHAT_DYN_v9_BADGE"; 
+        const KEY_DATA = "FB_CHAT_DYN_v9_BADGE"; // 相容舊版資料
         const PRES_PREFIX = "PRES_v2_";
         
-        let messages = []; let isSending = false; let lastSyncHash = ""; let transTimer = null; let lastTrans = null;
-        let userName = localStorage.getItem('fb_user_v2') || localStorage.getItem('fb_user') || ""; 
-        let originalTitle = document.title; let flashTimer = null; let isTabActive = true;
+        let messages = []; // 全體訊息緩存
+        let isSending = false;
+        let lastSyncHash = "";
+        let transTimer = null;
+        let lastTrans = null;
+        let translationCache = new Map();
+        let userName = localStorage.getItem('fb_user_v2') || ""; 
+        let currentRoom = "ALL"; // 當前選擇的房間 (ALL 或 使用者名稱)
+        let isTabActive = true;
+        let unreadCounts = new Map();
+        let originalTitle = document.title;
+        let flashTimer = null;
+        let renderedMsgIds = new Set(); // 追蹤已選染的訊息，優化性能
 
-        document.addEventListener("visibilitychange", () => { isTabActive = (document.visibilityState==='visible'); if(isTabActive) dismissAlert(); });
-        window.onfocus = () => { isTabActive = true; dismissAlert(); }; window.onblur = () => isTabActive = false;
+        // 初始化
+        if (userName) initUser();
+        else document.getElementById('name-modal').classList.remove('hidden');
 
+        function initUser() {
+            document.getElementById('my-name').innerText = userName;
+            document.getElementById('my-avatar').innerText = userName.charAt(0).toUpperCase();
+            heartbeat();
+            sync();
+        }
+
+        // --- UI 操作 ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.toggle('sidebar-active');
+            overlay.classList.toggle('hidden');
+        }
+
+        function switchRoom(room) {
+            if (currentRoom === room) return;
+            currentRoom = room;
+            
+            // 更新 UI 狀態
+            document.querySelectorAll('.room-item').forEach(el => el.classList.remove('active', 'font-bold'));
+            document.getElementById(`room-${room}`)?.classList.add('active', 'font-bold');
+            document.getElementById('active-room-title').innerText = room === "ALL" ? "全體廣播" : `私聊: ${room}`;
+            
+            // 清除未讀標記
+            unreadCounts.delete(room);
+            renderDMList(); 
+            
+            // 重新選渲染聊天區域
+            renderedMsgIds.clear();
+            document.getElementById('chat-messages').innerHTML = "";
+            updateUI(messages, false);
+            
+            if (window.innerWidth < 1024) toggleSidebar();
+        }
+
+        // --- 核心邏輯：翻譯與同步 ---
+        async function translate(text) {
+            if (!text) return "";
+            if (translationCache.has(text)) return translationCache.get(text);
+            
+            const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(text);
+            const sl = isJp ? 'ja' : 'zh-TW';
+            const tl = isJp ? 'zh-TW' : 'ja';
+            
+            try { 
+                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`); 
+                const json = await res.json(); 
+                const result = json[0].map(p => p[0]).join('');
+                translationCache.set(text, result);
+                return { result, origin: text }; 
+            } catch (e) { return { result: "...", origin: text }; }
+        }
+
+        function handleInput() {
+            const el = document.getElementById('msg-input');
+            const live = document.getElementById('live-trans');
+            const liveText = document.getElementById('live-trans-text');
+            const text = el.value.trim();
+            
+            el.style.height = 'auto'; 
+            el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+            
+            if (!text) { live.classList.add('hidden'); lastTrans = null; return; }
+            
+            clearTimeout(transTimer); 
+            transTimer = setTimeout(async () => {
+                if (el.value.trim() === text) { 
+                    const t = await translate(text); 
+                    lastTrans = t; 
+                    liveText.innerText = t.result; 
+                    live.classList.remove('hidden'); 
+                }
+            }, 350); // 稍微增加延遲，讓輸入更流暢
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('msg-input'); 
+            const text = input.value.trim(); 
+            if (!text || isSending) return; 
+            
+            isSending = true;
+            document.getElementById('live-trans').classList.add('hidden');
+            
+            const t = (lastTrans && lastTrans.origin === text) ? lastTrans : await translate(text);
+            const msg = { 
+                user: userName, 
+                text: text, 
+                trans: t.result, 
+                time: Date.now(),
+                to: currentRoom // "ALL" 或 私聊對象
+            };
+            
+            // 本地即時反應
+            const updated = [...messages, msg].slice(-100);
+            updateUI(updated, false);
+            
+            input.value = ""; 
+            input.style.height = "auto"; 
+            isSending = false; 
+            lastTrans = null;
+            
+            postData(KEY_DATA, updated); // V3 使用統一儲存，增加 'to' 欄位
+        }
+
+        function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+        // --- 核心優化：渲染與過濾 ---
+        function updateUI(newList, playAlert = true) {
+            const container = document.getElementById('chat-messages');
+            
+            // 找出本次同步的新訊息
+            const currentFilter = (m) => {
+                if (currentRoom === "ALL") return (!m.to || m.to === "ALL");
+                return (m.user === userName && m.to === currentRoom) || (m.user === currentRoom && m.to === userName);
+            };
+
+            const filteredList = newList.filter(currentFilter);
+            
+            let lastDate = "";
+            let newMsgsAdded = false;
+
+            filteredList.forEach(m => {
+                const msgId = `${m.user}_${m.time}`;
+                if (renderedMsgIds.has(msgId)) {
+                    // 即使已渲染，也要追蹤最後日期標籤
+                    lastDate = new Date(m.time).toLocaleDateString('zh-TW');
+                    return;
+                }
+
+                // 處理日期標籤
+                const dateStr = new Date(m.time).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                if (dateStr !== lastDate) {
+                    const div = document.createElement('div'); div.className = "date-divider"; div.innerHTML = `<span>${dateStr}</span>`;
+                    container.appendChild(div); lastDate = dateStr;
+                }
+
+                const isMe = m.user === userName;
+                const bubble = document.createElement('div'); 
+                bubble.className = `flex ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`;
+                bubble.innerHTML = `
+                    <div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        <div class="flex items-center gap-2 mb-1 px-3">
+                            <span class="text-[9px] font-black text-slate-400 tracking-tight uppercase">${m.user}</span>
+                            <span class="text-[8px] text-slate-300 font-bold">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <div class="p-4 rounded-3xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500 shadow-blue-100/50' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}">
+                            <div class="text-sm font-semibold tracking-tight whitespace-pre-wrap">${m.text}</div>
+                            <div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-50 text-blue-600'}">
+                                <div class="text-[11px] font-bold italic opacity-90">${m.trans}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                container.appendChild(bubble);
+                renderedMsgIds.add(msgId);
+                newMsgsAdded = true;
+            });
+
+            if (newMsgsAdded) container.scrollTop = container.scrollHeight;
+
+            // 處理未讀與通知
+            const lastMsg = newList[newList.length - 1];
+            const prevLastMsg = messages[messages.length - 1];
+            if (playAlert && lastMsg && (!prevLastMsg || lastMsg.time > prevLastMsg.time)) {
+                if (lastMsg.user !== userName) {
+                    processIncomingMsg(lastMsg);
+                }
+            }
+            
+            messages = newList;
+            updateRoomPreviews();
+        }
+
+        function processIncomingMsg(msg) {
+            const isToMe = msg.to === userName || (!msg.to || msg.to === "ALL");
+            if (!isToMe) return;
+
+            const roomOfMsg = (msg.to === userName) ? msg.user : "ALL";
+            
+            if (roomOfMsg !== currentRoom) {
+                unreadCounts.set(roomOfMsg, (unreadCounts.get(roomOfMsg) || 0) + 1);
+                renderDMList();
+                triggerAlert(msg.user);
+            } else if (!isTabActive) {
+                triggerAlert(msg.user);
+            }
+        }
+
+        function updateRoomPreviews() {
+            // 更新全體最後訊息
+            const lastAll = messages.filter(m => !m.to || m.to === "ALL").pop();
+            if (lastAll) document.getElementById('last-msg-ALL').innerText = lastAll.text;
+        }
+
+        function renderDMList() {
+            const dmList = document.getElementById('dm-list');
+            const currentOnline = Array.from(onlineUsers).filter(u => u !== userName);
+            
+            // 為了不讓畫面閃爍，只在有變化時更新
+            let html = "";
+            currentOnline.sort().forEach(u => {
+                const unread = unreadCounts.get(u);
+                html += `
+                    <div onclick="switchRoom('${u}')" id="room-${u}" class="room-item p-4 flex items-center justify-between cursor-pointer rounded-2xl transition-all ${currentRoom === u ? 'active font-bold' : ''}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center text-xs font-black">${u.charAt(0)}</div>
+                            <span class="text-sm">${u}</span>
+                        </div>
+                        ${unread ? `<span class="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">${unread}</span>` : ''}
+                    </div>
+                `;
+            });
+            dmList.innerHTML = html || `<p class="text-[10px] text-center text-slate-300 py-4">目前無人在線</p>`;
+        }
+
+        let onlineUsers = new Set();
+        async function sync() {
+            const statusDot = document.querySelector('#sync-status .online-dot');
+            try {
+                statusDot.classList.remove('grayscale');
+                const res = await fetch(`${GAS_URL}?t=${Date.now()}`); 
+                const cloud = await res.json();
+                
+                if (cloud && cloud[KEY_DATA]) {
+                    updateUI(cloud[KEY_DATA]);
+                }
+
+                // 處理在線列表
+                const now = Date.now();
+                const newOnline = new Set();
+                Object.keys(cloud).forEach(k => {
+                    if (k.startsWith(PRES_PREFIX)) {
+                        if (now - cloud[k] < 35000) {
+                            newOnline.add(k.replace(PRES_PREFIX, ""));
+                        }
+                    }
+                });
+                
+                if (JSON.stringify([...newOnline]) !== JSON.stringify([...onlineUsers])) {
+                    onlineUsers = newOnline;
+                    renderDMList();
+                }
+                
+                document.getElementById('sync-status').innerHTML = `<div class="online-dot w-1.5 h-1.5 animate-pulse"></div> 同步中 / SYNCED`;
+            } catch (e) { 
+                console.error(e);
+                document.getElementById('sync-status').innerHTML = `<div class="online-dot w-1.5 h-1.5 bg-red-400"></div> 連線異常`;
+            }
+        }
+
+        // --- 通知與 Alert ---
         function updateFavicon(hasNew) {
             const favicon = document.getElementById('favicon');
             if (hasNew) {
                 favicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>🌍</text><circle cx=%2280%22 cy=%2220%22 r=%2225%22 fill=%22red%22 stroke=%22white%22 stroke-width=%225%22/></svg>";
-                if ('setAppBadge' in navigator) navigator.setAppBadge();
             } else {
                 favicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>";
-                if ('clearAppBadge' in navigator) navigator.clearAppBadge();
             }
         }
 
         function triggerAlert(sender) {
-            if (isTabActive) return;
             updateFavicon(true);
             if (!flashTimer) {
                 let show = true; 
                 flashTimer = setInterval(() => { 
-                    document.title = show ? "►►► 🔔 新訊息 ◄◄◄" : originalTitle; 
+                    document.title = show ? "🔔 新訊息！" : originalTitle; 
                     show = !show; 
                 }, 600);
             }
@@ -182,93 +489,22 @@
             updateFavicon(false);
         }
 
-        if (!userName) document.getElementById('name-modal').classList.remove('hidden'); else document.getElementById('display-user-name').innerText = userName;
-
-        async function translate(text) {
-            if (!text) return ""; const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(text); const sl = isJp ? 'ja' : 'zh-TW'; const tl = isJp ? 'zh-TW' : 'ja';
-            try { 
-                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}&t=${Date.now()}`); 
-                const json = await res.json(); 
-                return { result: json[0].map(p => p[0]).join(''), origin: text }; 
-            } catch (e) { return { result: "...", origin: text }; }
-        }
-
-        function handleInput() {
-            const el = document.getElementById('msg-input');
-            const live = document.getElementById('live-trans');
-            const liveText = document.getElementById('live-trans-text');
-            const text = el.value.trim();
-            if (el.scrollHeight > el.clientHeight) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
-            if (!text) { live.classList.add('hidden'); lastTrans = null; return; }
-            clearTimeout(transTimer); transTimer = setTimeout(async () => {
-                if (el.value.trim() === text) { const t = await translate(text); lastTrans = t; liveText.innerText = t.result; live.classList.remove('hidden'); }
-            }, 250);
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('msg-input'); const text = input.value.trim(); if (!text || isSending) return; isSending = true;
-            document.getElementById('live-trans').classList.add('hidden');
-            let t = (lastTrans && lastTrans.origin === text) ? lastTrans : await translate(text);
-            const msg = { user: userName, text: text, trans: t.result, time: Date.now() };
-            const updated = [...messages, msg].slice(-100);
-            updateUI(updated, false); input.value = ""; input.style.height = "auto"; isSending = false; lastTrans = null;
-            postData(KEY_DATA, updated);
-        }
-
-        function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
-
-        function updateUI(newList, playAlert = true) {
-            const last = newList[newList.length - 1]; const current = messages[messages.length - 1]; const isNew = last && (!current || last.time > current.time);
-            if (JSON.stringify(newList) === lastSyncHash) return;
-            lastSyncHash = JSON.stringify(newList);
-            if (playAlert && isNew && last.user !== userName) triggerAlert(last.user);
-            messages = newList;
-            const container = document.getElementById('chat-messages'); container.innerHTML = "";
-            let lastDate = "";
-            messages.forEach(m => {
-                const dateStr = new Date(m.time).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                if (dateStr !== lastDate) {
-                    const div = document.createElement('div'); div.className = "date-divider text-center"; div.innerHTML = `<span>${dateStr}</span>`;
-                    container.appendChild(div); lastDate = dateStr;
-                }
-                const isMe = m.user === userName;
-                const bubble = document.createElement('div'); bubble.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
-                bubble.innerHTML = `<div class="message-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}"><div class="flex items-center gap-2 mb-1 px-3"><span class="text-[9px] font-black text-slate-400 tracking-tight uppercase">${m.user}</span><span class="text-[8px] text-slate-300">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div><div class="p-4 rounded-3xl shadow-sm border ${isMe ? 'bg-blue-600 text-white rounded-tr-none border-blue-500 shadow-blue-100/50' : 'bg-white text-slate-700 rounded-tl-none border-slate-100'}"><div class="text-sm font-semibold tracking-tight whitespace-pre-wrap">${m.text}</div><div class="mt-2 pt-2 border-t ${isMe ? 'border-white/20' : 'border-slate-50 text-blue-600'}"><div class="text-[11px] font-bold italic opacity-90">${m.trans}</div></div></div></div>`;
-                container.appendChild(bubble);
-            });
-            container.scrollTop = container.scrollHeight;
-        }
-
-        async function sync() {
-            try {
-                // 加入時間戳記避免 GitHub Pages 或手機瀏覽器快取舊資料
-                const res = await fetch(`${GAS_URL}?t=${Date.now()}`); 
-                const cloud = await res.json();
-                if (cloud && cloud[KEY_DATA]) updateUI(cloud[KEY_DATA]);
-                const now = Date.now(); const onlineUsers = []; const uniqueUsers = new Set();
-                Object.keys(cloud).forEach(k => {
-                    if (k.startsWith(PRES_PREFIX)) {
-                        if (now - cloud[k] < 30000) {
-                            const name = k.replace(PRES_PREFIX, "");
-                            if (!uniqueUsers.has(name)) { uniqueUsers.add(name); onlineUsers.push(name); }
-                        }
-                    }
-                });
-                onlineUsers.sort();
-                document.getElementById('online-list').innerText = onlineUsers.length > 0 ? onlineUsers.join(', ') : '無人';
-            } catch (e) { console.error(e); }
-        }
-
+        // --- 雜項 ---
         async function heartbeat() { if (userName) postData(PRES_PREFIX + userName, Date.now()); }
         function postData(id, data) {
             fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ id, data }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
         }
+        function saveNameFromModal() { const val = document.getElementById('modal-user-name').value.trim(); if (!val) return; userName = val; localStorage.setItem('fb_user_v2', userName); initUser(); document.getElementById('name-modal').classList.add('hidden'); }
+        function promptNameChange() { const newVal = prompt("新的姓名 / 新しい名前：", userName); if (newVal && newVal.trim()) { userName = newVal.trim(); localStorage.setItem('fb_user_v2', userName); initUser(); } }
+        function clearChat() { if (!confirm("清空目前房間的紀錄嗎？ / 履歴を削除しますか？")) return; postData(KEY_DATA, []); }
 
-        function saveNameFromModal() { const val = document.getElementById('modal-user-name').value.trim(); if (!val) return; userName = val; localStorage.setItem('fb_user_v2', userName); document.getElementById('display-user-name').innerText = userName; document.getElementById('name-modal').classList.add('hidden'); heartbeat(); }
-        function promptNameChange() { const newVal = prompt("新的姓名 / 新しい名前：", userName); if (newVal && newVal.trim()) { userName = newVal.trim(); localStorage.setItem('fb_user_v2', userName); document.getElementById('display-user-name').innerText = userName; updateUI(messages, false); heartbeat(); } }
-        function clearChat() { if (!confirm("清空歷史紀錄嗎？ / 履歴を削除しますか？")) return; postData(KEY_DATA, []); updateUI([]); }
+        window.onfocus = () => { isTabActive = true; dismissAlert(); };
+        window.onblur = () => isTabActive = false;
+        document.addEventListener("visibilitychange", () => { isTabActive = (document.visibilityState==='visible'); if(isTabActive) dismissAlert(); });
 
-        setInterval(sync, 4000); setInterval(heartbeat, 10000); sync(); heartbeat();
+        setInterval(sync, 5000); 
+        setInterval(heartbeat, 15000); 
+        sync(); heartbeat();
     </script>
 </body>
 </html>
