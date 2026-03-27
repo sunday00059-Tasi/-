@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedback Chat V3.5.5 PRO - 穩定開會版</title>
+    <title>Feedback Chat V3.5.6 PRO - 終極穩定版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -50,7 +50,6 @@
                 <div id="dm-list" class="space-y-1"></div>
             </div>
         </div>
-        <!-- 語言切換按鈕區 -->
         <div class="p-4 mx-4 mb-4 bg-slate-50 rounded-2xl flex gap-1 border">
             <button onclick="setLang('zh')" id="lang-zh" class="lang-btn">中文</button>
             <button onclick="setLang('jp')" id="lang-jp" class="lang-btn">日本語</button>
@@ -88,7 +87,7 @@
             </div>
             <div class="flex items-center gap-4">
                 <button id="ui-clear-global-btn" onclick="clearGlobalHistory()" class="text-[10px] font-bold text-red-500 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50 hidden">清空全體紀錄</button>
-                <div class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-black tracking-widest uppercase shadow-lg">V3.5.5</div>
+                <div class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-black tracking-widest uppercase shadow-lg">V3.5.6</div>
             </div>
         </header>
 
@@ -106,7 +105,6 @@
     </div>
 
     <script>
-        // --- 請確保與 GAS 部署網址一致 ---
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxiYhK3NjKzzyK0D4iXsoJlnB9E6BWvzSp9W9AXNQ6m6Yjf8AF1ktvTpxW475vesPiAFw/exec";
         const KEY_DATA = "FB_CHAT_DYN_v9_BADGE";
         
@@ -114,14 +112,14 @@
             zh: {
                 sidebarTitle: "成員名單", globalRoom: "全體廣播", contactTitle: "私聊通訊錄", clearBtn: "清空", 
                 myAccount: "我的帳號", renameBtn: "更名", modalTitle: "歡迎登入", modalBtn: "進入聊天室", 
-                modalPlaceholder: "您的名字", syncLoading: "連線中...", syncDone: "已同步", offline: "斷線中", 
+                modalPlaceholder: "您的名字", syncLoading: "連線中...", syncDone: "已同步", offline: "連線異常", 
                 previewLabel: "翻譯預覽: ", inputPlaceholder: "輸入訊息...", notice: "傳送了新訊息！", 
-                confirmClear: "確定要清空嗎？", confirmClearGlobal: "確定要刪除全體對話嗎？", clearGlobal: "清空全體紀錄", failSend: "傳送失敗"
+                confirmClear: "確定要清空通訊錄嗎？", confirmClearGlobal: "確定要刪除所有訊息嗎？", clearGlobal: "清空全體紀錄", failSend: "發送失敗"
             },
             jp: {
                 sidebarTitle: "メンバー", globalRoom: "全体放送", contactTitle: "ダイレクトメッセージ", clearBtn: "消去", 
                 myAccount: "マイアカウント", renameBtn: "名前変更", modalTitle: "ログイン", modalBtn: "入室する", 
-                modalPlaceholder: "お名前", syncLoading: "接続中...", syncDone: "同期済み", offline: "オフライン", 
+                modalPlaceholder: "お名前", syncLoading: "接続中...", syncDone: "同期済み", offline: "接続エラー", 
                 previewLabel: "翻訳プレビュー: ", inputPlaceholder: "メッセージを入力...", notice: "がメッセージを送信しました！", 
                 confirmClear: "履歴を削除しますか？", confirmClearGlobal: "全体記録を削除しますか？", clearGlobal: "履歴全消去", failSend: "送信失敗"
             }
@@ -158,7 +156,8 @@
             document.getElementById('ui-clear-global-btn').innerText = s.clearGlobal;
             
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('lang-'+currentLang).classList.add('active');
+            const activeBtn = document.getElementById('lang-' + currentLang);
+            if (activeBtn) activeBtn.classList.add('active');
             updateRoomTitle(); renderDMList();
         }
 
@@ -182,8 +181,7 @@
             if (isSyncing || !userName) return;
             isSyncing = true;
             try {
-                // 快取破除：加入 v=355 參數
-                const res = await fetch(`${GAS_URL}?user=${encodeURIComponent(userName)}&v=355&t=${Date.now()}`);
+                const res = await fetch(`${GAS_URL}?user=${encodeURIComponent(userName)}&v=356&t=${Date.now()}`);
                 const cloud = await res.json();
                 if (cloud && cloud[KEY_DATA]) {
                     processData(cloud[KEY_DATA]);
@@ -221,6 +219,7 @@
 
         function updateUI(newList) {
             const container = document.getElementById('chat-messages');
+            if (!container) return;
             const filtered = newList.filter(m => currentRoom==="ALL" ? (!m.to || m.to==="ALL") : ((m.user===userName && m.to===currentRoom) || (m.user===currentRoom && m.to===userName)));
             let added = false;
             filtered.forEach(m => {
@@ -250,29 +249,26 @@
             
             let trans = "";
             try {
-                // 防壞機制：如果翻譯 API 失敗，依然傳送原文
                 const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(text);
                 const transRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${isJp?'zh-TW':'ja'}&dt=t&q=${encodeURIComponent(text)}`);
                 const transJson = await transRes.json();
                 trans = transJson[0].map(p => p[0]).join('');
-            } catch (e) {
-                console.warn("Translation API blocked or failed, sending raw text.");
-                trans = ""; // 如果翻譯失敗，就留空
-            }
+            } catch (e) { console.warn("Translation failed"); trans = ""; }
 
             try {
                 const msg = { user: userName, text, trans, time: Date.now(), to: currentRoom };
-                updateUI([...messages, msg]); // 先在本地渲染
-                input.value = ""; input.style.height = "auto";
-                document.getElementById('trans-preview').classList.add('hidden');
-
+                // 注意：在 V3.5.6 中，必須確保伺服器成功接收才能維持同步
                 const res = await fetch(GAS_URL, { 
                     method: 'POST', 
                     body: JSON.stringify({ id: KEY_DATA, data: msg }), 
                     headers: { "Content-Type": "text/plain;charset=utf-8" } 
                 });
                 if (!res.ok) throw new Error("GAS POST failed");
-                console.log("Sent successfully");
+                
+                // 伺服器成功後再於本地顯示 (或依賴下一次 Sync)
+                input.value = ""; input.style.height = "auto";
+                document.getElementById('trans-preview').classList.add('hidden');
+                sync(); // 立即同步一次
             } catch (e) {
                 console.error("Send Error:", e);
                 alert((UI_STRINGS[currentLang] || UI_STRINGS.zh).failSend);
@@ -290,7 +286,6 @@
             if (window.innerWidth < 1024) toggleSidebar();
         }
 
-        // --- 其他輔助函式 ---
         function saveHistoryUsers() { localStorage.setItem('fb_history_users', JSON.stringify(Array.from(historyUsers))); renderDMList(); }
         function clearHistoryUsers() { if(confirm((UI_STRINGS[currentLang]||UI_STRINGS.zh).confirmClear)) { historyUsers = new Set(); saveHistoryUsers(); } }
         function triggerAlert(sender) {
@@ -303,15 +298,15 @@
         }
         function startTitleFlash() { 
             if (flashInterval) return; 
-            const msg = currentLang === 'zh' ? "🔔 新訊息！" : "🔔 新着！";
+            const msg = (currentLang === 'zh') ? "🔔 新訊息！" : "🔔 新着！";
             flashInterval = setInterval(() => { document.title = (document.title===originalTitle) ? msg : originalTitle; }, 800); 
         }
         function stopTitleFlash() { clearInterval(flashInterval); flashInterval = null; document.title = originalTitle; }
         function updateBadges() {
-            const allBadge = document.getElementById('unread-ALL');
             const count = unreadCounts.get('ALL') || 0;
-            allBadge.innerText = count;
-            count > 0 ? allBadge.classList.remove('hidden') : allBadge.classList.add('hidden');
+            const b = document.getElementById('unread-ALL');
+            b.innerText = count;
+            count > 0 ? b.classList.remove('hidden') : b.classList.add('hidden');
             renderDMList();
         }
         function updateOnlineStatus(cloud) {
